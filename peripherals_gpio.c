@@ -113,7 +113,7 @@ void gpio_init(void) {
 
 		struct gpiod_line_request_config request_config = {
 			.consumer = init_data->name,
-			.request_type = (init_data->is_output ? GPIOD_LINE_REQUEST_DIRECTION_OUTPUT : GPIOD_LINE_REQUEST_DIRECTION_INPUT),
+			.request_type = (init_data->is_output ? GPIOD_LINE_REQUEST_DIRECTION_OUTPUT : GPIOD_LINE_REQUEST_EVENT_BOTH_EDGES),
 			.flags = (init_data->active_low ? GPIOD_LINE_REQUEST_FLAG_ACTIVE_LOW : 0),
 		};
 		if (gpiod_line_request(runtime_data->gpio_line, &request_config, 0)) {
