@@ -52,6 +52,8 @@ struct gpio_init_data_t {
 typedef void (*gpio_irq_callback_t)(enum gpio_t gpio, bool value);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+const struct gpio_init_data_t* gpio_get_init_data(enum gpio_t gpio);
+bool gpio_get_last_value(enum gpio_t gpio);
 void gpio_init(void);
 void gpio_active(enum gpio_t gpio);
 void gpio_inactive(enum gpio_t gpio);

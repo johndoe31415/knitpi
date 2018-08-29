@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include "peripherals.h"
+#include "gpio_thread.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -36,6 +37,7 @@ struct test_mode_t {
 static int run_test_wiggle(int argc, char **argv);
 static int run_test_spi(int argc, char **argv);
 static int run_test_init_oe(int argc, char **argv);
+static int run_test_gpio_irqs(int argc, char **argv);
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -52,6 +54,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "init-oe",
 		.description = "Assert that initially !OE is disabled.",
 		.run_test = run_test_init_oe,
+	},
+	{
+		.mode_name = "gpio-irqs",
+		.description = "Test GPIO IRQs.",
+		.run_test = run_test_gpio_irqs,
 	},
 };
 
@@ -91,6 +98,21 @@ static int run_test_init_oe(int argc, char **argv) {
 	
 	uint8_t data[2] = { 0xff, 0xff };
 	spi_send(SPI_74HC595, data, sizeof(data));
+	while (true) {
+		sleep(1);
+	}
+	return 0;
+}
+
+static void gpio_thread(enum gpio_t gpio, bool value) {
+	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
+	fprintf(stderr, "%s: %s\n", gpio_data->name, value ? "Active" : "Inactive");
+}
+
+static int run_test_gpio_irqs(int argc, char **argv) {
+	printf("Testing GPIO IRQs.\n");
+	all_peripherals_init();
+	start_gpio_thread(gpio_thread);
 	while (true) {
 		sleep(1);
 	}

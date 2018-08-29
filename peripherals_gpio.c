@@ -74,8 +74,17 @@ static const struct gpio_init_data_t gpio_init_data[] = {
 static struct gpiod_chip *gpio_chip;
 struct gpio_runtime_data_t {
 	struct gpiod_line *gpio_line;
+	bool last_value;
 };
 static struct gpio_runtime_data_t gpio_runtime_data[GPIO_COUNT];
+
+const struct gpio_init_data_t* gpio_get_init_data(enum gpio_t gpio) {
+	return &gpio_init_data[gpio];
+}
+
+bool gpio_get_last_value(enum gpio_t gpio) {
+	return gpio_runtime_data[gpio].last_value;
+}
 
 static enum gpio_t get_gpio_for_offset(unsigned int gpio_offset) {
 	for (int i = 0; i < GPIO_COUNT; i++) {
@@ -172,10 +181,17 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 	int gpio_values[lines.num_lines];
 	gpiod_line_get_value_bulk(&lines, gpio_values);
 
+	/* Move them /all/ into the "last_values" member before calling callbacks */
+	enum gpio_t gpio_ids[lines.num_lines];
+	for (int i = 0; i < lines.num_lines; i++) {
+		enum gpio_t gpio_id = get_gpio_for_offset(gpiod_line_offset(lines.lines[i]));
+		gpio_ids[i] = gpio_id;
+		gpio_runtime_data[gpio_id].last_value = gpio_values[i];
+	}
+
 	/* Then call the callbacks */
 	for (int i = 0; i < lines.num_lines; i++) {
-		enum gpio_t gpio = get_gpio_for_offset(gpiod_line_offset(lines.lines[i]));
-		callback(gpio, gpio_values[i]);
+		callback(gpio_ids[i], gpio_values[i]);
 	}
 	return true;
 }

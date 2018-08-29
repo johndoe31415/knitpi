@@ -24,7 +24,11 @@
 #ifndef __GPIO_THREAD_H__
 #define __GPIO_THREAD_H__
 
+#include "peripherals_gpio.h"
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+void start_gpio_thread(gpio_irq_callback_t irq_handler);
+void stop_gpio_thread(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
