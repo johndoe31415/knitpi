@@ -39,6 +39,36 @@ static const struct gpio_init_data_t gpio_init_data[] = {
 		.active_low = true,
 		.is_output = true,
 	},
+	[GPIO_BROTHER_LEFT_HALL] = {
+		.name = "BROTHER_LEFT_HALL",
+		.gpio_no = 999,
+		.active_low = false,
+		.is_output = false,
+	},
+	[GPIO_BROTHER_RIGHT_HALL] = {
+		.name = "BROTHER_RIGHT_HALL",
+		.gpio_no = 999,
+		.active_low = false,
+		.is_output = false,
+	},
+	[GPIO_BROTHER_BR] = {
+		.name = "BROTHER_BR",
+		.gpio_no = 999,
+		.active_low = false,
+		.is_output = false,
+	},
+	[GPIO_BROTHER_V2] = {
+		.name = "BROTHER_V2",
+		.gpio_no = 999,
+		.active_low = false,
+		.is_output = false,
+	},
+	[GPIO_BROTHER_V1] = {
+		.name = "BROTHER_V1",
+		.gpio_no = 999,
+		.active_low = false,
+		.is_output = false,
+	},
 };
 
 static struct gpiod_chip *gpio_chip;
@@ -103,4 +133,36 @@ void gpio_set_to(enum gpio_t gpio, bool value) {
 	} else {
 		gpio_inactive(gpio);
 	}
+}
+
+unsigned int gpio_wait_for_input_change(struct gpio_action_t *actions, unsigned int max_actions, unsigned int timeout_millis) {
+	struct gpiod_line_bulk lines = GPIOD_LINE_BULK_INITIALIZER;
+	for (int i = 0; i < GPIO_COUNT; i++) {
+		const struct gpio_init_data_t *init_data = &gpio_init_data[i];
+		if (!init_data->is_output) {
+			// Is input, wait for IRQ
+			struct gpiod_line *line = gpio_runtime_data[i].gpio_line;
+			gpiod_line_bulk_add(&lines, line);
+		}
+	}
+
+	struct timespec timeout = {
+		.tv_sec = (timeout_millis / 1000),
+		.tv_nsec = (timeout_millis % 1000) * 1000000,
+	};
+
+	int wait_result = gpiod_line_event_wait_bulk(&lines, &timeout, &lines);
+	if (wait_result == -1) {
+		perror("gpiod_line_event_wait_bulk");
+		return 0;
+	} else if (wait_result == 0) {
+		return 0;
+	}
+
+	/* There were results, write back to actions structure */
+	for (int i = 0; i < lines.num_lines; i++) {
+		// TODO
+	//		actions[i].
+	}
+	return lines.num_lines;
 }

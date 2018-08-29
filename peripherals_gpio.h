@@ -29,6 +29,16 @@
 
 enum gpio_t {
 	GPIO_74HC595_OE,
+	GPIO_BROTHER_V1,
+	GPIO_BROTHER_V2,
+	GPIO_BROTHER_BR,
+	GPIO_BROTHER_LEFT_HALL,
+	GPIO_BROTHER_RIGHT_HALL,
+};
+
+struct gpio_action_t {
+	enum gpio_t gpio;
+	bool value;
 };
 
 struct gpio_init_data_t {
@@ -44,6 +54,7 @@ void gpio_active(enum gpio_t gpio);
 void gpio_inactive(enum gpio_t gpio);
 void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
 void gpio_set_to(enum gpio_t gpio, bool value);
+unsigned int gpio_wait_for_input_change(struct gpio_action_t *actions, unsigned int max_actions, unsigned int timeout_millis);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

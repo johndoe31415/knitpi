@@ -1,3 +1,4 @@
+test_gpio
 .*.swp
 *.o
 a.out
