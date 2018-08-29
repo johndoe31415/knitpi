@@ -77,6 +77,15 @@ struct gpio_runtime_data_t {
 };
 static struct gpio_runtime_data_t gpio_runtime_data[GPIO_COUNT];
 
+static enum gpio_t get_gpio_for_offset(unsigned int gpio_offset) {
+	for (int i = 0; i < GPIO_COUNT; i++) {
+		if (gpio_init_data[i].gpio_no == gpio_offset) {
+			return i;
+		}
+	}
+	return GPIO_INVALID;
+}
+
 void gpio_init(void) {
 	gpio_chip = gpiod_chip_open(GPIO_CHIP_FILENAME);
 	if (!gpio_chip) {
@@ -135,7 +144,7 @@ void gpio_set_to(enum gpio_t gpio, bool value) {
 	}
 }
 
-unsigned int gpio_wait_for_input_change(struct gpio_action_t *actions, unsigned int max_actions, unsigned int timeout_millis) {
+bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis) {
 	struct gpiod_line_bulk lines = GPIOD_LINE_BULK_INITIALIZER;
 	for (int i = 0; i < GPIO_COUNT; i++) {
 		const struct gpio_init_data_t *init_data = &gpio_init_data[i];
@@ -154,15 +163,19 @@ unsigned int gpio_wait_for_input_change(struct gpio_action_t *actions, unsigned 
 	int wait_result = gpiod_line_event_wait_bulk(&lines, &timeout, &lines);
 	if (wait_result == -1) {
 		perror("gpiod_line_event_wait_bulk");
-		return 0;
+		return false;
 	} else if (wait_result == 0) {
-		return 0;
+		return true;
 	}
 
-	/* There were results, write back to actions structure */
+	/* There were results, first get them all */
+	int gpio_values[lines.num_lines];
+	gpiod_line_get_value_bulk(&lines, gpio_values);
+
+	/* Then call the callbacks */
 	for (int i = 0; i < lines.num_lines; i++) {
-		// TODO
-	//		actions[i].
+		enum gpio_t gpio = get_gpio_for_offset(gpiod_line_offset(lines.lines[i]));
+		callback(gpio, gpio_values[i]);
 	}
-	return lines.num_lines;
+	return true;
 }

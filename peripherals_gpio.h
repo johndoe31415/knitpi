@@ -34,6 +34,7 @@ enum gpio_t {
 	GPIO_BROTHER_BR,
 	GPIO_BROTHER_LEFT_HALL,
 	GPIO_BROTHER_RIGHT_HALL,
+	GPIO_INVALID,
 };
 
 struct gpio_action_t {
@@ -48,13 +49,15 @@ struct gpio_init_data_t {
 	bool is_output;
 };
 
+typedef void (*gpio_irq_callback_t)(enum gpio_t gpio, bool value);
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void gpio_init(void);
 void gpio_active(enum gpio_t gpio);
 void gpio_inactive(enum gpio_t gpio);
 void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
 void gpio_set_to(enum gpio_t gpio, bool value);
-unsigned int gpio_wait_for_input_change(struct gpio_action_t *actions, unsigned int max_actions, unsigned int timeout_millis);
+bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
