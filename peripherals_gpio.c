@@ -41,31 +41,31 @@ static const struct gpio_init_data_t gpio_init_data[] = {
 	},
 	[GPIO_BROTHER_LEFT_HALL] = {
 		.name = "BROTHER_LEFT_HALL",
-		.gpio_no = 999,
+		.gpio_no = 19,
 		.active_low = false,
 		.is_output = false,
 	},
 	[GPIO_BROTHER_RIGHT_HALL] = {
 		.name = "BROTHER_RIGHT_HALL",
-		.gpio_no = 999,
+		.gpio_no = 26,
 		.active_low = false,
 		.is_output = false,
 	},
-	[GPIO_BROTHER_BR] = {
-		.name = "BROTHER_BR",
-		.gpio_no = 999,
-		.active_low = false,
-		.is_output = false,
-	},
-	[GPIO_BROTHER_V2] = {
-		.name = "BROTHER_V2",
-		.gpio_no = 999,
+	[GPIO_BROTHER_BP] = {
+		.name = "BROTHER_BP",
+		.gpio_no = 21,
 		.active_low = false,
 		.is_output = false,
 	},
 	[GPIO_BROTHER_V1] = {
 		.name = "BROTHER_V1",
-		.gpio_no = 999,
+		.gpio_no = 20,
+		.active_low = false,
+		.is_output = false,
+	},
+	[GPIO_BROTHER_V2] = {
+		.name = "BROTHER_V2",
+		.gpio_no = 16,
 		.active_low = false,
 		.is_output = false,
 	},
