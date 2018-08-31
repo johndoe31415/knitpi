@@ -189,8 +189,10 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 		gpio_runtime_data[gpio_id].last_value = gpio_values[i];
 	}
 
-	/* Then call the callbacks */
+	/* Then read the event and call the callbacks */
 	for (int i = 0; i < lines.num_lines; i++) {
+		struct gpiod_line_event event;
+		gpiod_line_event_read(lines.lines[i], &event);
 		callback(gpio_ids[i], gpio_values[i]);
 	}
 	return true;
