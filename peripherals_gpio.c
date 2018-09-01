@@ -222,7 +222,7 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 	/* Then perform the callbacks */
 	for (int i = 0; i < event_lines.num_lines; i++) {
 		enum gpio_t gpio_id = gpio_ids[i];
-		callback(gpio_id, gpio_runtime_data[gpio_id].last_value);
+		callback(gpio_id, &events[i].ts, gpio_runtime_data[gpio_id].last_value);
 	}
 	return true;
 }

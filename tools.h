@@ -21,46 +21,18 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __PERIPHERALS_GPIO_H__
-#define __PERIPHERALS_GPIO_H__
+#ifndef __TOOLS_H__
+#define __TOOLS_H__
 
-#include <stdint.h>
 #include <stdbool.h>
-#include <time.h>
+#include <stdint.h>
 
-enum gpio_t {
-	GPIO_74HC595_OE,
-	GPIO_BROTHER_V1,
-	GPIO_BROTHER_V2,
-	GPIO_BROTHER_BP,
-	GPIO_BROTHER_LEFT_HALL,
-	GPIO_BROTHER_RIGHT_HALL,
-	GPIO_INVALID,
-};
-
-struct gpio_action_t {
-	enum gpio_t gpio;
-	bool value;
-};
-
-struct gpio_init_data_t {
-	const char *name;
-	int gpio_no;
-	bool active_low;
-	bool is_output;
-};
-
-typedef void (*gpio_irq_callback_t)(enum gpio_t gpio, const struct timespec *ts, bool value);
+typedef void* (*thread_function_t)(void *arg);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-const struct gpio_init_data_t* gpio_get_init_data(enum gpio_t gpio);
-bool gpio_get_last_value(enum gpio_t gpio);
-void gpio_init(void);
-void gpio_active(enum gpio_t gpio);
-void gpio_inactive(enum gpio_t gpio);
-void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
-void gpio_set_to(enum gpio_t gpio, bool value);
-bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis);
+bool start_detached_thread(thread_function_t thread_fnc, void *argument);
+void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
+int64_t timespec_diff(struct timespec *a, struct timespec *b);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

@@ -21,46 +21,23 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __PERIPHERALS_GPIO_H__
-#define __PERIPHERALS_GPIO_H__
+//void gpio_irq_callback_t
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <time.h>
+#ifndef __DEBOUNCER_H__
+#define __DEBOUNCER_H__
 
-enum gpio_t {
-	GPIO_74HC595_OE,
-	GPIO_BROTHER_V1,
-	GPIO_BROTHER_V2,
-	GPIO_BROTHER_BP,
-	GPIO_BROTHER_LEFT_HALL,
-	GPIO_BROTHER_RIGHT_HALL,
-	GPIO_INVALID,
+#include "peripherals_gpio.h"
+
+#define MAX_DEBOUNCE_GPIOS		16
+
+struct debouncer_state_t {
+	bool debounced_state;
+	bool pending_change;
 };
-
-struct gpio_action_t {
-	enum gpio_t gpio;
-	bool value;
-};
-
-struct gpio_init_data_t {
-	const char *name;
-	int gpio_no;
-	bool active_low;
-	bool is_output;
-};
-
-typedef void (*gpio_irq_callback_t)(enum gpio_t gpio, const struct timespec *ts, bool value);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-const struct gpio_init_data_t* gpio_get_init_data(enum gpio_t gpio);
-bool gpio_get_last_value(enum gpio_t gpio);
-void gpio_init(void);
-void gpio_active(enum gpio_t gpio);
-void gpio_inactive(enum gpio_t gpio);
-void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
-void gpio_set_to(enum gpio_t gpio, bool value);
-bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis);
+void debouncer_input(enum gpio_t gpio, const struct timespec *ts, bool value);
+bool start_debouncer_thread(gpio_irq_callback_t debouncer_output_callback);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

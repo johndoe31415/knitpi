@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include "peripherals.h"
 #include "gpio_thread.h"
+#include "isleep.h"
+#include "tools.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -39,6 +41,8 @@ static int run_test_spi(int argc, char **argv);
 static int run_test_init_oe(int argc, char **argv);
 static int run_test_gpio_irqs(int argc, char **argv);
 static int run_test_single_output(int argc, char **argv);
+static int run_test_interruptible_sleep(int argc, char **argv);
+static int run_test_abstime(int argc, char **argv);
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -65,6 +69,16 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "gpio-output-single",
 		.description = "Test single output.",
 		.run_test = run_test_single_output,
+	},
+	{
+		.mode_name = "isleep",
+		.description = "Test interruptible sleep primitive.",
+		.run_test = run_test_interruptible_sleep,
+	},
+	{
+		.mode_name = "abstime",
+		.description = "Test abstime() primitive.",
+		.run_test = run_test_abstime,
 	},
 };
 
@@ -110,9 +124,9 @@ static int run_test_init_oe(int argc, char **argv) {
 	return 0;
 }
 
-static void gpio_thread(enum gpio_t gpio, bool value) {
+static void gpio_thread(enum gpio_t gpio, const struct timespec *ts, bool value) {
 	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
-	fprintf(stderr, "%s: %s\n", gpio_data->name, value ? "Active" : "Inactive");
+	fprintf(stderr, "%s: %lu.%09lu %s\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive");
 }
 
 static int run_test_gpio_irqs(int argc, char **argv) {
@@ -141,10 +155,65 @@ static int run_test_single_output(int argc, char **argv) {
 		spi_send(SPI_74HC595, pattern, sizeof(pattern));
 
 		char buf[16];
-		fgets(buf, sizeof(buf), stdin);
+		if (!fgets(buf, sizeof(buf), stdin)) {
+			perror("fgets");
+			break;
+		}
 		active = (active + 1) % 16;
 	}
 	return 0;
+}
+
+static void *annoying_sleep_interruptor(void *vsleeper) {
+	struct isleep_t *sleeper = (struct isleep_t*)vsleeper;
+	while (true) {
+		sleep(3);
+		isleep_interrupt(sleeper);
+	}
+	return NULL;
+}
+
+static int run_test_interruptible_sleep(int argc, char **argv) {
+	struct isleep_t sleeper = ISLEEP_INITIALIZER;
+	start_detached_thread(annoying_sleep_interruptor, &sleeper);
+	while (true) {
+		struct timespec before;
+		get_abs_timespec_offset(&before, 0);
+		bool interrupted = isleep(&sleeper, 1234);
+		struct timespec after;
+		get_abs_timespec_offset(&after, 0);
+		int64_t nanodiff = timespec_diff(&after, &before);
+		fprintf(stderr, "Slept %s: %lu ms\n", interrupted ? "INTERRUPTED" : "normally", nanodiff / 1000000);
+	}
+}
+
+static int run_test_abstime(int argc, char **argv) {
+	while (true) {
+		struct timespec past, now, future;
+		get_abs_timespec_offset(&past, -5555);
+		get_abs_timespec_offset(&now, 0);
+		get_abs_timespec_offset(&future, 5555);
+
+		if (past.tv_nsec >= 1000000000) {
+			fprintf(stderr, "past timespec error: %lu %lu\n", past.tv_sec, past.tv_nsec);
+			return 1;
+		}
+		if (now.tv_nsec >= 1000000000) {
+			fprintf(stderr, "now timespec error: %lu %lu\n", now.tv_sec, now.tv_nsec);
+			return 1;
+		}
+		if (future.tv_nsec >= 1000000000) {
+			fprintf(stderr, "future timespec error: %lu %lu\n", future.tv_sec, future.tv_nsec);
+			return 1;
+		}
+
+		double fpast = past.tv_sec + (past.tv_nsec / 1e9);
+		double fnow = now.tv_sec + (now.tv_nsec / 1e9);
+		double ffuture = future.tv_sec + (future.tv_nsec / 1e9);
+		fprintf(stderr, "%.3f %.3f\n", fnow - fpast, ffuture - fnow);
+
+		usleep(100 * 1000);
+	}
 }
 
 static void show_syntax(const char *errmsg) {

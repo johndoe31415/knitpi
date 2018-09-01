@@ -21,46 +21,25 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __PERIPHERALS_GPIO_H__
-#define __PERIPHERALS_GPIO_H__
+#ifndef __ISLEEP_H__
+#define __ISLEEP_H__
 
-#include <stdint.h>
+#include <pthread.h>
 #include <stdbool.h>
-#include <time.h>
 
-enum gpio_t {
-	GPIO_74HC595_OE,
-	GPIO_BROTHER_V1,
-	GPIO_BROTHER_V2,
-	GPIO_BROTHER_BP,
-	GPIO_BROTHER_LEFT_HALL,
-	GPIO_BROTHER_RIGHT_HALL,
-	GPIO_INVALID,
+struct isleep_t {
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
 };
 
-struct gpio_action_t {
-	enum gpio_t gpio;
-	bool value;
-};
-
-struct gpio_init_data_t {
-	const char *name;
-	int gpio_no;
-	bool active_low;
-	bool is_output;
-};
-
-typedef void (*gpio_irq_callback_t)(enum gpio_t gpio, const struct timespec *ts, bool value);
+#define ISLEEP_INITIALIZER		{ \
+	.mutex = PTHREAD_MUTEX_INITIALIZER,	\
+	.cond = PTHREAD_COND_INITIALIZER,	\
+}
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-const struct gpio_init_data_t* gpio_get_init_data(enum gpio_t gpio);
-bool gpio_get_last_value(enum gpio_t gpio);
-void gpio_init(void);
-void gpio_active(enum gpio_t gpio);
-void gpio_inactive(enum gpio_t gpio);
-void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
-void gpio_set_to(enum gpio_t gpio, bool value);
-bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis);
+void isleep_interrupt(struct isleep_t *isleep);
+bool isleep(struct isleep_t *isleep, unsigned int milliseconds);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
