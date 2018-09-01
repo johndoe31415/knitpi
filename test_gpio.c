@@ -32,6 +32,7 @@
 #include "tools.h"
 #include "debouncer.h"
 #include "sled.h"
+#include "needles.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -50,6 +51,7 @@ static int run_test_debounce(int argc, char **argv);
 static int run_test_gpio_irqs_debounced(int argc, char **argv);
 static int run_test_sled(int argc, char **argv);
 static int run_test_sled_actuate(int argc, char **argv);
+static int run_test_needle_name(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
 
@@ -98,7 +100,7 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "debounce",
 		.description = "Test debouncing",
 		.run_test = run_test_debounce,
-	},	
+	},
 	{
 		.mode_name = "sled",
 		.description = "Test sled positioning",
@@ -108,6 +110,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "sled-act",
 		.description = "Test sled positioning/actuation",
 		.run_test = run_test_sled_actuate,
+	},
+	{
+		.mode_name = "needle-name",
+		.description = "Test needle names",
+		.run_test = run_test_needle_name,
 	},
 };
 
@@ -183,7 +190,7 @@ static int run_test_gpio_irqs_debounced(int argc, char **argv) {
 	printf("Testing GPIO IRQs with debouncing.\n");
 	all_peripherals_init();
 	start_debouncer_thread(gpio_callback_debounced);
-	start_gpio_thread(debouncer_input, true);	
+	start_gpio_thread(debouncer_input, true);
 	while (true) {
 		sleep(1);
 	}
@@ -313,40 +320,30 @@ static int run_test_sled(int argc, char **argv) {
 	}
 }
 
-static int knit_pos = 96;
+static int knit_needle_id = 104;
+
+static bool sled_around_needle_id(unsigned int position, unsigned int needle_id) {
+//	return (position / 8) == (needle_id / 8);
+	return true;
+}
+
+static void actuate_solenoids_for_needle(uint8_t *spi_data, unsigned int needle_id) {
+	int bit = needle_id % 16;
+	//if (phase) {
+		bit = (bit + 8) % 16;
+	//}
+	spi_data[bit / 8] |= (1 << (bit % 8));
+}
 
 static void sled_actuation_callback(int position, bool left_to_right) {
 	uint8_t spi_data[] = { 0, 0 };
-	const int offset = 0;
 
+	if (sled_around_needle_id(position, knit_needle_id)) {
+		actuate_solenoids_for_needle(spi_data, knit_needle_id);
+	}
 
-
-	if (left_to_right) {
-		/* 102 - 107: |= 1 */
-		/* 101 - 106: |= 2 */
-
-		int pos_mod_16 = position % 16;
-		int pos_div_16 = position / 16;
-		if ((pos_div_16 == 6) ) {
-			spi_data[0] |= 2;
-		}
-		if ((pos_div_16 == 6) ) {
-			spi_data[0] |= 1;
-		}
-		/*
-		const int knit[] = { 	
-			 101, 102, 103, 104, 105, 106,
-		};
-		for (int i = 0; i < sizeof(knit) / sizeof(const int); i++) {
-			if (knit[i] == position) {
-				spi_data[0] |= 2;
-				fprintf(stderr, "KNIT Needle 1 at sled pos %d\n", position);
-			}
-		}
-		*/
-		if (spi_data[0]) {
-			fprintf(stderr, "KNIT %02x at sled pos %d\n", spi_data[0], position);
-		}
+	if (spi_data[0] || spi_data[1]) {
+		fprintf(stderr, "KNIT %02x %02x at sled pos %d\n", spi_data[0], spi_data[1], position);
 	}
 	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
 }
@@ -360,14 +357,33 @@ static int run_test_sled_actuate(int argc, char **argv) {
 	spi_clear(SPI_74HC595, 2);
 	gpio_active(GPIO_74HC595_OE);
 	while (true) {
-		printf("Knit pos: %d\n", knit_pos);
+		char name[32];
+		needle_pos_to_text(name, knit_needle_id);
+		printf("Knit needle ID: %s (%d)\n", name, knit_needle_id);
 		char buf[16];
 		if (!fgets(buf, sizeof(buf), stdin)) {
 			perror("fgets");
 			break;
 		}
-		knit_pos++;	
+		knit_needle_id++;
 	}
+}
+
+static int run_test_needle_name(int argc, char **argv) {
+	for (int i = 0; i < 200; i++) {
+		char name[32];
+		needle_pos_to_text(name, i);
+		fprintf(stderr, "%3d: %s\n", i, name);
+	}
+	for (int i = 100; i >= 1; i--) {
+		int needle_pos = needle_text_to_pos('y', i);
+		fprintf(stderr, "Y %-3d: %3d\n", i, needle_pos);
+	}
+	for (int i = 1; i <= 100; i++) {
+		int needle_pos = needle_text_to_pos('g', i);
+		fprintf(stderr, "G %-3d: %3d\n", i, needle_pos);
+	}
+	return 0;
 }
 
 static void show_syntax(const char *errmsg) {
