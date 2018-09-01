@@ -110,3 +110,9 @@ void spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int t
 		perror("Could not send SPI transmission");
 	}
 }
+
+void spi_clear(enum spi_bus_t spi_bus, unsigned int tx_length) {
+	uint8_t data[tx_length];
+	memset(data, 0, sizeof(data));
+	spi_send(spi_bus, data, sizeof(data));
+}

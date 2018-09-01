@@ -49,6 +49,7 @@ static int run_test_abstime(int argc, char **argv);
 static int run_test_debounce(int argc, char **argv);
 static int run_test_gpio_irqs_debounced(int argc, char **argv);
 static int run_test_sled(int argc, char **argv);
+static int run_test_sled_actuate(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
 
@@ -102,6 +103,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "sled",
 		.description = "Test sled positioning",
 		.run_test = run_test_sled,
+	},
+	{
+		.mode_name = "sled-act",
+		.description = "Test sled positioning/actuation",
+		.run_test = run_test_sled_actuate,
 	},
 };
 
@@ -292,13 +298,63 @@ static int run_test_debounce(int argc, char **argv) {
 	usleep(100 * 1000);
 }
 
+static void sled_callback(int position, bool left_to_right) {
+	fprintf(stderr, "Sled at: %3d %s\n", position, left_to_right ? "->" : "<-");
+}
+
 static int run_test_sled(int argc, char **argv) {
 	printf("Testing sled positioning.\n");
 	all_peripherals_init();
+	sled_set_callback(sled_callback);
 	start_debouncer_thread(sled_input);
 	start_gpio_thread(debouncer_input, true);
 	while (true) {
 		sleep(1);
+	}
+}
+
+static int knit_pos = 96;
+
+static void sled_actuation_callback(int position, bool left_to_right) {
+	uint8_t spi_data[] = { 0, 0 };
+	const int offset = 0;
+
+
+
+	if (left_to_right) {
+		const int knit[] = { 	
+//								96, 97, 98, 99,
+//								100, 
+//								101, 
+								102, 103, 104, 105, 106, 107,
+//								 108, 109, 110, 111,	 
+		};
+		for (int i = 0; i < sizeof(knit) / sizeof(const int); i++) {
+			if (knit[i] == position) {
+				spi_data[0] |= 1;
+				fprintf(stderr, "KNIT Needle 1 at sled pos %d\n", position);
+			}
+		}
+	}
+	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
+}
+
+static int run_test_sled_actuate(int argc, char **argv) {
+	printf("Testing sled positioning and actuation.\n");
+	all_peripherals_init();
+	sled_set_callback(sled_actuation_callback);
+	start_debouncer_thread(sled_input);
+	start_gpio_thread(debouncer_input, true);
+	spi_clear(SPI_74HC595, 2);
+	gpio_active(GPIO_74HC595_OE);
+	while (true) {
+		printf("Knit pos: %d\n", knit_pos);
+		char buf[16];
+		if (!fgets(buf, sizeof(buf), stdin)) {
+			perror("fgets");
+			break;
+		}
+		knit_pos++;	
 	}
 }
 

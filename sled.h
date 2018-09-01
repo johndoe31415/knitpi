@@ -28,7 +28,10 @@
 #include <time.h>
 #include "peripherals_gpio.h"
 
+typedef void (*sled_callback_t)(int position, bool left_to_right);
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+void sled_set_callback(sled_callback_t callback);
 void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
