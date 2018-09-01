@@ -322,9 +322,21 @@ static int run_test_sled(int argc, char **argv) {
 
 static int knit_needle_id = 104;
 
-static bool sled_around_needle_id(unsigned int position, unsigned int needle_id) {
-//	return (position / 8) == (needle_id / 8);
-	return true;
+static bool sled_before_needle_id(int sled_position, int needle_id, bool left_to_right) {
+	int offset_left, offset_right;
+	if (left_to_right) {
+		offset_left = -16 + 8;
+		offset_right = 0 + 8;
+	} else {
+		offset_left = 0 - 8;
+		offset_right = 16 - 8;
+	}
+	/* 100:		LR 90 - 100
+	 * 			RL 110 - 90
+	 */
+	int window_left = needle_id + offset_left;
+	int window_right = needle_id + offset_right;
+	return (sled_position >= window_left) && (sled_position <= window_right);
 }
 
 static void actuate_solenoids_for_needle(uint8_t *spi_data, unsigned int needle_id) {
@@ -338,7 +350,7 @@ static void actuate_solenoids_for_needle(uint8_t *spi_data, unsigned int needle_
 static void sled_actuation_callback(int position, bool left_to_right) {
 	uint8_t spi_data[] = { 0, 0 };
 
-	if (sled_around_needle_id(position, knit_needle_id)) {
+	if (sled_before_needle_id(position, knit_needle_id, left_to_right)) {
 		actuate_solenoids_for_needle(spi_data, knit_needle_id);
 	}
 
