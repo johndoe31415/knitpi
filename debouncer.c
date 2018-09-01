@@ -30,7 +30,23 @@
 #include "isleep.h"
 
 static bool run_debouncer_thread;
-static struct debouncer_state_t debounce_state[GPIO_COUNT];
+static struct debouncer_state_t debounce_state[GPIO_COUNT] = {
+	[GPIO_BROTHER_V1] = {
+		.debounce_time_ms = 5,
+	},
+	[GPIO_BROTHER_V2] = {
+		.debounce_time_ms = 5,
+	},
+	[GPIO_BROTHER_BP] = {
+		.debounce_time_ms = 5,
+	},
+	[GPIO_BROTHER_LEFT_HALL] = {
+		.debounce_time_ms = 100,
+	},
+	[GPIO_BROTHER_RIGHT_HALL] = {
+		.debounce_time_ms = 100,
+	},
+};
 static pthread_mutex_t debounce_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct isleep_t sleeper = ISLEEP_INITIALIZER;
 static gpio_irq_callback_t global_debouncer_output_callback;
@@ -52,7 +68,7 @@ void debouncer_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 				/* We don't have that change recorded yet. */
 				debounce->pending_change = true;
 				memcpy(&debounce->change_time, ts, sizeof(struct timespec));
-				add_timespec_offset(&debounce->change_time, 5);
+				add_timespec_offset(&debounce->change_time, debounce->debounce_time_ms);
 				isleep_interrupt(&sleeper);
 			}
 		}

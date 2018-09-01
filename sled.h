@@ -21,25 +21,15 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-//void gpio_irq_callback_t
+#ifndef __SLED_H__
+#define __SLED_H__
 
-#ifndef __DEBOUNCER_H__
-#define __DEBOUNCER_H__
-
+#include <stdbool.h>
 #include <time.h>
 #include "peripherals_gpio.h"
 
-struct debouncer_state_t {
-	bool debounced_state;
-	bool initialized;
-	bool pending_change;
-	uint16_t debounce_time_ms;
-	struct timespec change_time;
-};
-
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void debouncer_input(enum gpio_t gpio, const struct timespec *ts, bool value);
-bool start_debouncer_thread(gpio_irq_callback_t debouncer_output_callback);
+void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
