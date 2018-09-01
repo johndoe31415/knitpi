@@ -48,6 +48,8 @@ static int run_test_abstime(int argc, char **argv);
 static int run_test_debounce(int argc, char **argv);
 static int run_test_gpio_irqs_debounced(int argc, char **argv);
 
+static struct timespec last_gpio_event[GPIO_COUNT];
+
 static struct test_mode_t test_modes[] = {
 	{
 		.mode_name = "wiggle",
@@ -138,31 +140,37 @@ static int run_test_init_oe(int argc, char **argv) {
 	return 0;
 }
 
-static void gpio_thread(enum gpio_t gpio, const struct timespec *ts, bool value) {
+static void gpio_callback_raw(enum gpio_t gpio, const struct timespec *ts, bool value) {
+	int64_t tdiff = timespec_diff(ts, &last_gpio_event[gpio]);
+	memcpy(&last_gpio_event[gpio], ts, sizeof(struct timespec));
+
 	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
-	fprintf(stderr, "%s: %lu.%09lu %s\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive");
+	fprintf(stderr, "%s: %lu.%09lu %s (%.1f ms)\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive", tdiff / 1e6);
+}
+
+static void gpio_callback_debounced(enum gpio_t gpio, const struct timespec *ts, bool value) {
+	int64_t tdiff = timespec_diff(ts, &last_gpio_event[gpio]);
+	memcpy(&last_gpio_event[gpio], ts, sizeof(struct timespec));
+
+	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
+	fprintf(stderr, "Debounced %s: %lu.%09lu %s (%.1f ms)\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive", tdiff / 1e6);
 }
 
 static int run_test_gpio_irqs(int argc, char **argv) {
 	printf("Testing GPIO IRQs.\n");
 	all_peripherals_init();
-	start_gpio_thread(gpio_thread);
+	start_gpio_thread(gpio_callback_raw, true);
 	while (true) {
 		sleep(1);
 	}
 	return 0;
 }
 
-static void debounced_output(enum gpio_t gpio, const struct timespec *ts, bool value) {
-	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
-	fprintf(stderr, "Debounced %s: %lu.%09lu %s\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive");
-}
-
 static int run_test_gpio_irqs_debounced(int argc, char **argv) {
 	printf("Testing GPIO IRQs with debouncing.\n");
 	all_peripherals_init();
-	start_debouncer_thread(debounced_output);
-	start_gpio_thread(debouncer_input);
+	start_debouncer_thread(gpio_callback_debounced);
+	start_gpio_thread(debouncer_input, true);	
 	while (true) {
 		sleep(1);
 	}
@@ -247,7 +255,7 @@ static int run_test_abstime(int argc, char **argv) {
 }
 
 static int run_test_debounce(int argc, char **argv) {
-	start_debouncer_thread(debounced_output);
+	start_debouncer_thread(gpio_callback_debounced);
 
 	struct timespec now;
 	get_timespec_now(&now);

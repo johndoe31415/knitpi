@@ -37,10 +37,14 @@ static void* gpio_thread_body(void *vhandler) {
 	return NULL;
 }
 
-void start_gpio_thread(gpio_irq_callback_t irq_handler) {
+void start_gpio_thread(gpio_irq_callback_t irq_handler, bool initial_notify) {
 	run_thread = true;
 	if (!start_detached_thread(gpio_thread_body, irq_handler)) {
 		perror("failed to start GPIO thread");
+		return;
+	}
+	if (initial_notify) {
+		gpio_notify_all_inputs(irq_handler);
 	}
 }
 

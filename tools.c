@@ -76,8 +76,8 @@ void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseco
 	add_timespec_offset(timespec, offset_milliseconds);
 }
 
-int64_t timespec_diff(struct timespec *a, struct timespec *b) {
-	int64_t nanoseconds_difference = (a->tv_sec - b->tv_sec) * 1000000000;
+int64_t timespec_diff(const struct timespec *a, const struct timespec *b) {
+	int64_t nanoseconds_difference = (a->tv_sec - b->tv_sec) * (int64_t)1000000000;
 	nanoseconds_difference += (a->tv_nsec - b->tv_nsec);
 	return nanoseconds_difference;
 }

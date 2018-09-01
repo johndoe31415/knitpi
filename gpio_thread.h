@@ -27,7 +27,7 @@
 #include "peripherals_gpio.h"
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void start_gpio_thread(gpio_irq_callback_t irq_handler);
+void start_gpio_thread(gpio_irq_callback_t irq_handler, bool initial_notify);
 void stop_gpio_thread(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 

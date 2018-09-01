@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <gpiod.h>
+#include "tools.h"
 #include "peripherals_gpio.h"
 	
 #define GPIO_CHIP_FILENAME	 "/dev/gpiochip0"
@@ -40,13 +41,13 @@ static const struct gpio_init_data_t gpio_init_data[GPIO_COUNT] = {
 	},
 	[GPIO_BROTHER_LEFT_HALL] = {
 		.name = "BROTHER_LEFT_HALL",
-		.gpio_no = 19,
+		.gpio_no = 26,
 		.active_low = false,
 		.is_output = false,
 	},
 	[GPIO_BROTHER_RIGHT_HALL] = {
 		.name = "BROTHER_RIGHT_HALL",
-		.gpio_no = 26,
+		.gpio_no = 19,
 		.active_low = false,
 		.is_output = false,
 	},
@@ -224,4 +225,17 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 		callback(gpio_id, &events[i].ts, gpio_runtime_data[gpio_id].last_value);
 	}
 	return true;
+}
+
+void gpio_notify_all_inputs(gpio_irq_callback_t callback) {
+	struct timespec now;
+	get_timespec_now(&now);
+	for (int i = 0; i < GPIO_COUNT; i++) {
+		const struct gpio_init_data_t *init_data = &gpio_init_data[i];
+		struct gpio_runtime_data_t *runtime_data = &gpio_runtime_data[i];
+		if (!init_data->is_output) {
+			/* Is input, notify! */
+			callback(i, &now, runtime_data->last_value);
+		}
+	}
 }

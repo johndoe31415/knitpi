@@ -63,6 +63,7 @@ void gpio_inactive(enum gpio_t gpio);
 void gpio_pulse(enum gpio_t gpio, uint16_t microseconds);
 void gpio_set_to(enum gpio_t gpio, bool value);
 bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis);
+void gpio_notify_all_inputs(gpio_irq_callback_t callback);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

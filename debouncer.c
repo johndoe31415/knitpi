@@ -52,7 +52,7 @@ void debouncer_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 				/* We don't have that change recorded yet. */
 				debounce->pending_change = true;
 				memcpy(&debounce->change_time, ts, sizeof(struct timespec));
-				add_timespec_offset(&debounce->change_time, 50);
+				add_timespec_offset(&debounce->change_time, 5);
 				isleep_interrupt(&sleeper);
 			}
 		}
