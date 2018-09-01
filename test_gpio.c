@@ -322,14 +322,30 @@ static void sled_actuation_callback(int position, bool left_to_right) {
 
 
 	if (left_to_right) {
+		/* 102 - 107: |= 1 */
+		/* 101 - 106: |= 2 */
+
+		int pos_mod_16 = position % 16;
+		int pos_div_16 = position / 16;
+		if ((pos_div_16 == 6) ) {
+			spi_data[0] |= 2;
+		}
+		if ((pos_div_16 == 6) ) {
+			spi_data[0] |= 1;
+		}
+		/*
 		const int knit[] = { 	
-			 102, 103, 104, 105, 106, 107,
+			 101, 102, 103, 104, 105, 106,
 		};
 		for (int i = 0; i < sizeof(knit) / sizeof(const int); i++) {
 			if (knit[i] == position) {
-				spi_data[0] |= 1;
+				spi_data[0] |= 2;
 				fprintf(stderr, "KNIT Needle 1 at sled pos %d\n", position);
 			}
+		}
+		*/
+		if (spi_data[0]) {
+			fprintf(stderr, "KNIT %02x at sled pos %d\n", spi_data[0], position);
 		}
 	}
 	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
