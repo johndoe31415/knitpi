@@ -54,6 +54,7 @@ static int run_test_sled_actuate(int argc, char **argv);
 static int run_test_needle_name(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
+static int knit_needle_id = 104;
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -320,38 +321,6 @@ static int run_test_sled(int argc, char **argv) {
 	}
 }
 
-static int knit_needle_id = 104;
-static int offset_fix_l = 8;
-static int offset_fix_r = 24;
-
-static bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right) {
-	int offset_left, offset_right;
-
-	/* 8 - 24 is the full cycle. 16 - 20 is the minimum that still works.
-	 * We use 15 - 21 to be safe. */
-	offset_left = 15;
-	offset_right = 21;
-
-	if (!left_to_right) {
-		int tmp = offset_left;
-		offset_left = -offset_right;
-		offset_right = -tmp;
-	}
-
-	int window_left = needle_id + offset_left;
-	int window_right = needle_id + offset_right;
-	printf("For needle id %3d BP %d %s: [ %3d - %3d ] window size %d\n", needle_id, belt_phase, left_to_right ? "->" : "<-", window_left, window_right, window_right - window_left);
-	return (sled_position >= window_left) && (sled_position < window_right);
-}
-
-static void actuate_solenoids_for_needle(uint8_t *spi_data, bool belt_phase, unsigned int needle_id) {
-	int bit = needle_id % 16;
-	if (belt_phase) {
-		bit = (bit + 8) % 16;
-	}
-	spi_data[bit / 8] |= (1 << (bit % 8));
-}
-
 static void sled_actuation_callback(int position, bool belt_phase, bool left_to_right) {
 	uint8_t spi_data[] = { 0, 0 };
 
@@ -382,18 +351,7 @@ static int run_test_sled_actuate(int argc, char **argv) {
 			perror("fgets");
 			break;
 		}
-		if (!strcmp(buf, "l\n")) {
-			offset_fix_l--;
-		} else if (!strcmp(buf, "L\n")) {
-			offset_fix_l++;
-		} else if (!strcmp(buf, "r\n")) {
-			offset_fix_r--;
-		} else if (!strcmp(buf, "R\n")) {
-			offset_fix_r++;
-		} else {
-			knit_needle_id++;
-		}
-		printf("New offsets: %d to %d (window %d)\n", offset_fix_l, offset_fix_r, offset_fix_r - offset_fix_l);
+		knit_needle_id++;
 	}
 }
 

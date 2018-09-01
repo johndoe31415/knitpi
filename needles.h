@@ -24,9 +24,14 @@
 #ifndef __NEEDLES_H__
 #define __NEEDLES_H__
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void needle_pos_to_text(char text[static 32], unsigned int needle_pos);
 int needle_text_to_pos(char letter, unsigned int number);
+bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right);
+void actuate_solenoids_for_needle(uint8_t *spi_data, bool belt_phase, unsigned int needle_id);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif
