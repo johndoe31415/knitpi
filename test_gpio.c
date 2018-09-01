@@ -323,11 +323,7 @@ static void sled_actuation_callback(int position, bool left_to_right) {
 
 	if (left_to_right) {
 		const int knit[] = { 	
-//								96, 97, 98, 99,
-//								100, 
-//								101, 
-								102, 103, 104, 105, 106, 107,
-//								 108, 109, 110, 111,	 
+			 102, 103, 104, 105, 106, 107,
 		};
 		for (int i = 0; i < sizeof(knit) / sizeof(const int); i++) {
 			if (knit[i] == position) {
