@@ -154,13 +154,13 @@ void gpio_set_to(enum gpio_t gpio, bool value) {
 }
 
 bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeout_millis) {
-	struct gpiod_line_bulk lines = GPIOD_LINE_BULK_INITIALIZER;
+	struct gpiod_line_bulk event_lines = GPIOD_LINE_BULK_INITIALIZER;
 	for (int i = 0; i < GPIO_COUNT; i++) {
 		const struct gpio_init_data_t *init_data = &gpio_init_data[i];
 		if (!init_data->is_output) {
 			// Is input, wait for IRQ
 			struct gpiod_line *line = gpio_runtime_data[i].gpio_line;
-			gpiod_line_bulk_add(&lines, line);
+			gpiod_line_bulk_add(&event_lines, line);
 		}
 	}
 
@@ -169,7 +169,7 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 		.tv_nsec = (timeout_millis % 1000) * 1000000,
 	};
 
-	int wait_result = gpiod_line_event_wait_bulk(&lines, &timeout, &lines);
+	int wait_result = gpiod_line_event_wait_bulk(&event_lines, &timeout, &event_lines);
 	if (wait_result == -1) {
 		perror("gpiod_line_event_wait_bulk");
 		return false;
@@ -177,23 +177,27 @@ bool gpio_wait_for_input_change(gpio_irq_callback_t callback, unsigned int timeo
 		return true;
 	}
 
-	/* There were results, first get them all */
-	int gpio_values[lines.num_lines];
-	gpiod_line_get_value_bulk(&lines, gpio_values);
-
-	/* Move them /all/ into the "last_values" member before calling callbacks */
-	enum gpio_t gpio_ids[lines.num_lines];
-	for (int i = 0; i < lines.num_lines; i++) {
-		enum gpio_t gpio_id = get_gpio_for_offset(gpiod_line_offset(lines.lines[i]));
+	/* There were results, first read all events and populate the "last_values"
+	 * member before calling callbacks */
+	struct gpiod_line_event events[event_lines.num_lines];
+	enum gpio_t gpio_ids[event_lines.num_lines];
+	for (int i = 0; i < event_lines.num_lines; i++) {
+		enum gpio_t gpio_id = get_gpio_for_offset(gpiod_line_offset(event_lines.lines[i]));
 		gpio_ids[i] = gpio_id;
-		gpio_runtime_data[gpio_id].last_value = gpio_values[i];
+		gpiod_line_event_read(event_lines.lines[i], &events[i]);
+		if (events[i].event_type == GPIOD_LINE_EVENT_RISING_EDGE) {
+			gpio_runtime_data[gpio_id].last_value = true;
+		} else if (events[i].event_type == GPIOD_LINE_EVENT_FALLING_EDGE) {
+			gpio_runtime_data[gpio_id].last_value = false;
+		} else {
+			fprintf(stderr, "Unknown event type: 0x%x\n", events[i].event_type);
+		}
 	}
 
-	/* Then read the event and call the callbacks */
-	for (int i = 0; i < lines.num_lines; i++) {
-		struct gpiod_line_event event;
-		gpiod_line_event_read(lines.lines[i], &event);
-		callback(gpio_ids[i], gpio_values[i]);
+	/* Then perform the callbacks */
+	for (int i = 0; i < event_lines.num_lines; i++) {
+		enum gpio_t gpio_id = gpio_ids[i];
+		callback(gpio_id, gpio_runtime_data[gpio_id].last_value);
 	}
 	return true;
 }
