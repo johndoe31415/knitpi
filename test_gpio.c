@@ -31,6 +31,7 @@
 #include "isleep.h"
 #include "tools.h"
 #include "debouncer.h"
+#include "sled.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -47,6 +48,7 @@ static int run_test_interruptible_sleep(int argc, char **argv);
 static int run_test_abstime(int argc, char **argv);
 static int run_test_debounce(int argc, char **argv);
 static int run_test_gpio_irqs_debounced(int argc, char **argv);
+static int run_test_sled(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
 
@@ -95,6 +97,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "debounce",
 		.description = "Test debouncing",
 		.run_test = run_test_debounce,
+	},	
+	{
+		.mode_name = "sled",
+		.description = "Test sled positioning",
+		.run_test = run_test_sled,
 	},
 };
 
@@ -283,6 +290,16 @@ static int run_test_debounce(int argc, char **argv) {
 	debouncer_input(2, &now, true);
 
 	usleep(100 * 1000);
+}
+
+static int run_test_sled(int argc, char **argv) {
+	printf("Testing sled positioning.\n");
+	all_peripherals_init();
+	start_debouncer_thread(sled_input);
+	start_gpio_thread(debouncer_input, true);
+	while (true) {
+		sleep(1);
+	}
 }
 
 static void show_syntax(const char *errmsg) {

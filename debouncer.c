@@ -32,19 +32,19 @@
 static bool run_debouncer_thread;
 static struct debouncer_state_t debounce_state[GPIO_COUNT] = {
 	[GPIO_BROTHER_V1] = {
-		.debounce_time_ms = 5,
+		.debounce_time_ms = 0,
 	},
 	[GPIO_BROTHER_V2] = {
-		.debounce_time_ms = 5,
+		.debounce_time_ms = 0,
 	},
 	[GPIO_BROTHER_BP] = {
 		.debounce_time_ms = 5,
 	},
 	[GPIO_BROTHER_LEFT_HALL] = {
-		.debounce_time_ms = 100,
+		.debounce_time_ms = 25,
 	},
 	[GPIO_BROTHER_RIGHT_HALL] = {
-		.debounce_time_ms = 100,
+		.debounce_time_ms = 25,
 	},
 };
 static pthread_mutex_t debounce_mutex = PTHREAD_MUTEX_INITIALIZER;
