@@ -25,6 +25,7 @@
 #define __PERIPHERALS_SPI_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 enum spi_bus_t {
 	SPI_74HC595,
@@ -36,9 +37,9 @@ struct spi_init_data_t {
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void spi_init(void);
-void spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int tx_length);
-void spi_clear(enum spi_bus_t spi_bus, unsigned int tx_length);
+bool spi_init(void);
+bool spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int tx_length);
+bool spi_clear(enum spi_bus_t spi_bus, unsigned int tx_length);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

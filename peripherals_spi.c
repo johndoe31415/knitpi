@@ -48,53 +48,54 @@ struct spi_runtime_data_t {
 };
 static struct spi_runtime_data_t spi_runtime_data[SPI_COUNT];
 
-void spi_init(void) {
+bool spi_init(void) {
 	for (int i = 0; i < SPI_COUNT; i++) {
 		const struct spi_init_data_t *init_data = &spi_init_data[i];
 		struct spi_runtime_data_t *runtime_data = &spi_runtime_data[i];
 		runtime_data->fd = open(init_data->device, O_RDWR);
 		if (runtime_data->fd == -1) {
 			perror(init_data->device);
-			return;
+			return false;
 		}
 
 		{
 			uint8_t spi_mode = SPI_MODE_0;
 			if (ioctl(runtime_data->fd, SPI_IOC_WR_MODE, &spi_mode) == -1) {
 				perror("ioctl(SPI_IOC_WR_MODE)");
-				return;
+				return false;
 			}
 			if (ioctl(runtime_data->fd, SPI_IOC_RD_MODE, &spi_mode) == -1) {
 				perror("ioctl(SPI_IOC_RD_MODE)");
-				return;
+				return false;
 			}
 		}
 		{
 			uint8_t bits_per_word = 8;
 			if (ioctl(runtime_data->fd, SPI_IOC_WR_BITS_PER_WORD, &bits_per_word) == -1) {
 				perror("ioctl(SPI_IOC_WR_BITS_PER_WORD)");
-				return;
+				return false;
 			}
 			if (ioctl(runtime_data->fd, SPI_IOC_RD_BITS_PER_WORD, &bits_per_word) == -1) {
 				perror("ioctl(SPI_IOC_RD_BITS_PER_WORD)");
-				return;
+				return false;
 			}
 		}
 		{
 			uint32_t speed_hz = init_data->speed_khz * 1000;
 			if (ioctl(runtime_data->fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed_hz) == -1) {
 				perror("ioctl(SPI_IOC_WR_MAX_SPEED_HZ)");
-				return;
+				return false;
 			}
 			if (ioctl(runtime_data->fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed_hz) == -1) {
 				perror("ioctl(SPI_IOC_RD_MAX_SPEED_HZ)");
-				return;
+				return false;
 			}
 		}
 	}
+	return true;
 }
 
-void spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int tx_length) {
+bool spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int tx_length) {
 	const struct spi_init_data_t *init_data = &spi_init_data[spi_bus];
 	struct spi_runtime_data_t *runtime_data = &spi_runtime_data[spi_bus];
 	uint8_t dummy[tx_length];
@@ -108,11 +109,13 @@ void spi_send(enum spi_bus_t spi_bus, const uint8_t *spi_tx_data, unsigned int t
 	};
 	if (ioctl(runtime_data->fd, SPI_IOC_MESSAGE(1), &transfer) < 1) {
 		perror("Could not send SPI transmission");
+		return false;
 	}
+	return true;
 }
 
-void spi_clear(enum spi_bus_t spi_bus, unsigned int tx_length) {
+bool spi_clear(enum spi_bus_t spi_bus, unsigned int tx_length) {
 	uint8_t data[tx_length];
 	memset(data, 0, sizeof(data));
-	spi_send(spi_bus, data, sizeof(data));
+	return spi_send(spi_bus, data, sizeof(data));
 }

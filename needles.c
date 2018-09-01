@@ -47,10 +47,12 @@ int needle_text_to_pos(char letter, unsigned int number) {
 bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right) {
 	int offset_left, offset_right;
 
-	/* 8 - 24 is the full cycle. 16 - 20 is the minimum that still works.
-	 * We use 15 - 21 to be safe. */
-	offset_left = 15;
-	offset_right = 21;
+	/* 8 - 24 is the full cycle. 16 - 20 is the minimum that still works.  We
+	 * use 15 - 21 to be safe. TODO: 15-21 might lose stitches, try more safety
+	 * margin! */
+	const int safety = 4;
+	offset_left = 16 - safety;
+	offset_right = 20 + safety;
 
 	if (!left_to_right) {
 		int tmp = offset_left;

@@ -28,7 +28,7 @@
 #include "peripherals_spi.h"
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void all_peripherals_init(void);
+bool all_peripherals_init(void);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

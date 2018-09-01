@@ -25,7 +25,12 @@
 #include "peripherals_spi.h"
 #include "peripherals.h"
 
-void all_peripherals_init(void) {
-	gpio_init();
-	spi_init();
+bool all_peripherals_init(void) {
+	if (!gpio_init()) {
+		return false;
+	}
+	if (!spi_init()) {
+		return false;
+	}
+	return true;
 }

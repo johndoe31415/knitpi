@@ -32,6 +32,7 @@ struct pnmfile_t {
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 struct pnmfile_t* pnmfile_read(const char *filename);
 const uint8_t* pnmfile_row(const struct pnmfile_t *pnmfile, unsigned int y);
+void pnmfile_dump_row(const struct pnmfile_t *pnmfile, unsigned int y);
 void pnmfile_dump(const struct pnmfile_t *pnmfile);
 void pnmfile_free(struct pnmfile_t *pnmfile);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

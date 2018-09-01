@@ -1,4 +1,5 @@
 test_gpio
+emit_pattern
 .*.swp
 *.o
 a.out

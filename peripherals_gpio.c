@@ -29,7 +29,7 @@
 #include <gpiod.h>
 #include "tools.h"
 #include "peripherals_gpio.h"
-	
+
 #define GPIO_CHIP_FILENAME	 "/dev/gpiochip0"
 
 static const struct gpio_init_data_t gpio_init_data[GPIO_COUNT] = {
@@ -118,11 +118,11 @@ static void read_all_gpio_values(void) {
 	}
 }
 
-void gpio_init(void) {
+bool gpio_init(void) {
 	gpio_chip = gpiod_chip_open(GPIO_CHIP_FILENAME);
 	if (!gpio_chip) {
 		perror("gpiod_chip_open(" GPIO_CHIP_FILENAME ")");
-		return;
+		return false;
 	}
 
 	for (int i = 0; i < GPIO_COUNT; i++) {
@@ -131,7 +131,7 @@ void gpio_init(void) {
 		runtime_data->gpio_line = gpiod_chip_get_line(gpio_chip, init_data->gpio_no);
 		if (!runtime_data->gpio_line) {
 			fprintf(stderr, "Failed to get GPIO line %d: %s\n", init_data->gpio_no, strerror(errno));
-			return;
+			return false;
 		}
 
 		struct gpiod_line_request_config request_config = {
@@ -141,11 +141,12 @@ void gpio_init(void) {
 		};
 		if (gpiod_line_request(runtime_data->gpio_line, &request_config, 0)) {
 			fprintf(stderr, "Failed to set GPIO line %d configuration: %s\n", init_data->gpio_no, strerror(errno));
-			return;
+			return false;
 		}
 	}
 
 	read_all_gpio_values();
+	return true;
 }
 
 void gpio_active(enum gpio_t gpio) {

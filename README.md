@@ -1,6 +1,8 @@
 # knitpi
+![I love KnitPi](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/logo.png)
+
 KnitPi is a Raspberry Pi interface for a Brother KH-930 knitting machine. It's
-not yet functional, this is very early prototyping work.
+functional, but very experimental.
 
 ## Dependencies
 KnitPi does not rely on any Raspberry Pi specific hardware, but I run it on a

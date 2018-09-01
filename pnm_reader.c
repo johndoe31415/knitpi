@@ -114,7 +114,7 @@ struct pnmfile_t* pnmfile_read(const char *filename) {
 			uint8_t g = row_data[(3 * x) + 1];
 			uint8_t b = row_data[(3 * x) + 2];
 			uint8_t gray = r & g & b;
-			pnmfile->image_data[(pnmfile->width * y) + x] = ~gray;
+			pnmfile->image_data[(pnmfile->width * y) + x] = gray;
 		}
 	}
 
@@ -125,13 +125,17 @@ const uint8_t* pnmfile_row(const struct pnmfile_t *pnmfile, unsigned int y) {
 	return pnmfile->image_data + (pnmfile->width * y);
 }
 
+void pnmfile_dump_row(const struct pnmfile_t *pnmfile, unsigned int y) {
+	const uint8_t *row = pnmfile_row(pnmfile, y);
+	for (int x = 0; x < pnmfile->width; x++) {
+		printf("%s", row[x] ? " " : "•");
+	}
+	printf("\n");
+}
+
 void pnmfile_dump(const struct pnmfile_t *pnmfile) {
 	for (int y = 0; y < pnmfile->height; y++) {
-		const uint8_t *row = pnmfile_row(pnmfile, y);
-		for (int x = 0; x < pnmfile->width; x++) {
-			printf("%s", row[x] ? "*" : " ");
-		}
-		printf("\n");
+		pnmfile_dump_row(pnmfile, y);
 	}
 }
 
