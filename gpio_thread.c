@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "gpio_thread.h"
+#include "tools.h"
 #include "peripherals_gpio.h"
 
 static bool run_thread;
@@ -37,13 +38,10 @@ static void* gpio_thread_body(void *vhandler) {
 }
 
 void start_gpio_thread(gpio_irq_callback_t irq_handler) {
-	pthread_attr_t attrs;
-	pthread_attr_init(&attrs);
-	pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
-
-	pthread_t thread;
 	run_thread = true;
-	pthread_create(&thread, &attrs, gpio_thread_body, irq_handler);
+	if (!start_detached_thread(gpio_thread_body, irq_handler)) {
+		perror("failed to start GPIO thread");
+	}
 }
 
 void stop_gpio_thread(void) {
