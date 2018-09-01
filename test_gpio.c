@@ -305,8 +305,8 @@ static int run_test_debounce(int argc, char **argv) {
 	usleep(100 * 1000);
 }
 
-static void sled_callback(int position, bool left_to_right) {
-	fprintf(stderr, "Sled at: %3d %s\n", position, left_to_right ? "->" : "<-");
+static void sled_callback(int position, bool belt_phase, bool left_to_right) {
+	fprintf(stderr, "Sled at: %3d %s phase %d\n", position, left_to_right ? "->" : "<-", belt_phase);
 }
 
 static int run_test_sled(int argc, char **argv) {
@@ -322,7 +322,7 @@ static int run_test_sled(int argc, char **argv) {
 
 static int knit_needle_id = 104;
 
-static bool sled_before_needle_id(int sled_position, int needle_id, bool left_to_right) {
+static bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right) {
 	int offset_left, offset_right;
 	if (left_to_right) {
 		offset_left = -16 + 8 + 16;
@@ -331,26 +331,32 @@ static bool sled_before_needle_id(int sled_position, int needle_id, bool left_to
 		offset_left = 0 - 8 - 16;
 		offset_right = 16 - 8 - 16;
 	}
-	/* 100:		LR 90 - 100
-	 * 			RL 110 - 90
-	 */
+
+	if (!belt_phase) {
+		if (left_to_right) {
+			offset_left = -16 + 8 + 16 + 8;
+			offset_right = 0 + 8+ 16 + 8;
+		} else {
+			offset_left = 0 - 8 - 16;
+			offset_right = 16 - 8 - 16;
+		}
+	}
+
 	int window_left = needle_id + offset_left;
 	int window_right = needle_id + offset_right;
+	printf("For needle id %3d BP %d %s: [ %3d - %3d ] window size %d\n", needle_id, belt_phase, left_to_right ? "->" : "<-", window_left, window_right, window_right - window_left);
 	return (sled_position >= window_left) && (sled_position <= window_right);
 }
 
 static void actuate_solenoids_for_needle(uint8_t *spi_data, unsigned int needle_id) {
 	int bit = needle_id % 16;
-	//if (phase) {
-		bit = (bit + 8) % 16;
-	//}
 	spi_data[bit / 8] |= (1 << (bit % 8));
 }
 
-static void sled_actuation_callback(int position, bool left_to_right) {
+static void sled_actuation_callback(int position, bool belt_phase, bool left_to_right) {
 	uint8_t spi_data[] = { 0, 0 };
 
-	if (sled_before_needle_id(position, knit_needle_id, left_to_right)) {
+	if (sled_before_needle_id(position, knit_needle_id, belt_phase, left_to_right)) {
 		actuate_solenoids_for_needle(spi_data, knit_needle_id);
 	}
 

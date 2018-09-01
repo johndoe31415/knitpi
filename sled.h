@@ -28,7 +28,7 @@
 #include <time.h>
 #include "peripherals_gpio.h"
 
-typedef void (*sled_callback_t)(int position, bool left_to_right);
+typedef void (*sled_callback_t)(int position, bool belt_phase, bool left_to_right);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void sled_set_callback(sled_callback_t callback);
