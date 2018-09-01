@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include "peripherals.h"
 #include "gpio_thread.h"
 #include "isleep.h"
@@ -45,6 +46,7 @@ static int run_test_single_output(int argc, char **argv);
 static int run_test_interruptible_sleep(int argc, char **argv);
 static int run_test_abstime(int argc, char **argv);
 static int run_test_debounce(int argc, char **argv);
+static int run_test_gpio_irqs_debounced(int argc, char **argv);
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -66,6 +68,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "gpio-irqs",
 		.description = "Test GPIO IRQs.",
 		.run_test = run_test_gpio_irqs,
+	},
+	{
+		.mode_name = "gpio-irqs-debounced",
+		.description = "Test GPIO IRQs with debouncing.",
+		.run_test = run_test_gpio_irqs_debounced,
 	},
 	{
 		.mode_name = "gpio-output-single",
@@ -146,6 +153,22 @@ static int run_test_gpio_irqs(int argc, char **argv) {
 	return 0;
 }
 
+static void debounced_output(enum gpio_t gpio, const struct timespec *ts, bool value) {
+	const struct gpio_init_data_t *gpio_data = gpio_get_init_data(gpio);
+	fprintf(stderr, "Debounced %s: %lu.%09lu %s\n", gpio_data->name, ts->tv_sec, ts->tv_nsec, value ? "Active" : "Inactive");
+}
+
+static int run_test_gpio_irqs_debounced(int argc, char **argv) {
+	printf("Testing GPIO IRQs with debouncing.\n");
+	all_peripherals_init();
+	start_debouncer_thread(debounced_output);
+	start_gpio_thread(debouncer_input);
+	while (true) {
+		sleep(1);
+	}
+	return 0;
+}
+
 static int run_test_single_output(int argc, char **argv) {
 	all_peripherals_init();
 	uint8_t zero_pattern[] = { 0, 0 };
@@ -190,7 +213,7 @@ static int run_test_interruptible_sleep(int argc, char **argv) {
 		struct timespec after;
 		get_abs_timespec_offset(&after, 0);
 		int64_t nanodiff = timespec_diff(&after, &before);
-		fprintf(stderr, "Slept %s: %lu ms\n", interrupted ? "INTERRUPTED" : "normally", nanodiff / 1000000);
+		fprintf(stderr, "Slept %s: %" PRIu64 " ms\n", interrupted ? "INTERRUPTED" : "normally", nanodiff / 1000000);
 	}
 }
 
@@ -221,10 +244,6 @@ static int run_test_abstime(int argc, char **argv) {
 
 		usleep(100 * 1000);
 	}
-}
-
-static void debounced_output(enum gpio_t gpio, const struct timespec *ts, bool value) {
-	fprintf(stderr, "Debounced %lu.%09lu: %d is now %d\n", ts->tv_sec, ts->tv_nsec, gpio, value);
 }
 
 static int run_test_debounce(int argc, char **argv) {
