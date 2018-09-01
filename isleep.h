@@ -39,6 +39,7 @@ struct isleep_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void isleep_interrupt(struct isleep_t *isleep);
+bool isleep_abs(struct isleep_t *isleep, const struct timespec *abstime);
 bool isleep(struct isleep_t *isleep, unsigned int milliseconds);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 

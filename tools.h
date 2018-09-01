@@ -31,8 +31,12 @@ typedef void* (*thread_function_t)(void *arg);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool start_detached_thread(thread_function_t thread_fnc, void *argument);
+void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
+void get_timespec_now(struct timespec *timespec);
 void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
 int64_t timespec_diff(struct timespec *a, struct timespec *b);
+bool timespec_lt(const struct timespec *a, const struct timespec *b);
+void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

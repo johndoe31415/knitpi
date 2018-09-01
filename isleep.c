@@ -33,12 +33,15 @@ void isleep_interrupt(struct isleep_t *isleep) {
 	pthread_cond_broadcast(&isleep->cond);
 }
 
+bool isleep_abs(struct isleep_t *isleep, const struct timespec *abstime) {
+	pthread_mutex_lock(&isleep->mutex);
+	int wait_result = pthread_cond_timedwait(&isleep->cond, &isleep->mutex, abstime);
+	pthread_mutex_unlock(&isleep->mutex);
+	return (wait_result == 0);
+}
+
 bool isleep(struct isleep_t *isleep, unsigned int milliseconds) {
 	struct timespec abstime;
 	get_abs_timespec_offset(&abstime, milliseconds);
-
-	pthread_mutex_lock(&isleep->mutex);
-	int wait_result = pthread_cond_timedwait(&isleep->cond, &isleep->mutex, &abstime);
-	pthread_mutex_unlock(&isleep->mutex);
-	return (wait_result == 0);
+	return isleep_abs(isleep, &abstime);
 }

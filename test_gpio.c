@@ -29,6 +29,7 @@
 #include "gpio_thread.h"
 #include "isleep.h"
 #include "tools.h"
+#include "debouncer.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -43,6 +44,7 @@ static int run_test_gpio_irqs(int argc, char **argv);
 static int run_test_single_output(int argc, char **argv);
 static int run_test_interruptible_sleep(int argc, char **argv);
 static int run_test_abstime(int argc, char **argv);
+static int run_test_debounce(int argc, char **argv);
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -80,6 +82,11 @@ static struct test_mode_t test_modes[] = {
 		.description = "Test abstime() primitive.",
 		.run_test = run_test_abstime,
 	},
+	{
+		.mode_name = "debounce",
+		.description = "Test debouncing",
+		.run_test = run_test_debounce,
+	},
 };
 
 static int run_test_wiggle(int argc, char **argv) {
@@ -87,9 +94,9 @@ static int run_test_wiggle(int argc, char **argv) {
 	gpio_init();
 	while (true) {
 		gpio_active(GPIO_74HC595_OE);
-		usleep(500 * 1000);		
+		usleep(500 * 1000);
 		gpio_inactive(GPIO_74HC595_OE);
-		usleep(500 * 1000);		
+		usleep(500 * 1000);
 	}
 	return 0;
 }
@@ -115,7 +122,7 @@ static int run_test_spi(int argc, char **argv) {
 static int run_test_init_oe(int argc, char **argv) {
 	printf("SPI test. OE is INACTIVE, but all bits are set.\n");
 	all_peripherals_init();
-	
+
 	uint8_t data[2] = { 0xff, 0xff };
 	spi_send(SPI_74HC595, data, sizeof(data));
 	while (true) {
@@ -214,6 +221,41 @@ static int run_test_abstime(int argc, char **argv) {
 
 		usleep(100 * 1000);
 	}
+}
+
+static void debounced_output(enum gpio_t gpio, const struct timespec *ts, bool value) {
+	fprintf(stderr, "Debounced %lu.%09lu: %d is now %d\n", ts->tv_sec, ts->tv_nsec, gpio, value);
+}
+
+static int run_test_debounce(int argc, char **argv) {
+	start_debouncer_thread(debounced_output);
+
+	struct timespec now;
+	get_timespec_now(&now);
+	debouncer_input(2, &now, false);
+
+	usleep(10 * 1000);
+
+	get_timespec_now(&now);
+	debouncer_input(2, &now, false);
+
+	usleep(10 * 1000);
+
+	get_timespec_now(&now);
+	debouncer_input(2, &now, true);
+
+	usleep(10 * 1000);
+
+	get_timespec_now(&now);
+	debouncer_input(2, &now, false);
+
+	usleep(10 * 1000);
+
+	get_timespec_now(&now);
+	fprintf(stderr, "Final change: %lu.%09lu\n", now.tv_sec, now.tv_nsec);
+	debouncer_input(2, &now, true);
+
+	usleep(100 * 1000);
 }
 
 static void show_syntax(const char *errmsg) {

@@ -35,8 +35,10 @@ enum gpio_t {
 	GPIO_BROTHER_BP,
 	GPIO_BROTHER_LEFT_HALL,
 	GPIO_BROTHER_RIGHT_HALL,
-	GPIO_INVALID,
+	GPIO_INVALID,					/* Must be last */
 };
+
+#define GPIO_COUNT			GPIO_INVALID
 
 struct gpio_action_t {
 	enum gpio_t gpio;

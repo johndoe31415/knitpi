@@ -29,10 +29,9 @@
 #include <gpiod.h>
 #include "peripherals_gpio.h"
 	
-#define GPIO_COUNT	(sizeof(gpio_init_data) / sizeof(struct gpio_init_data_t))
 #define GPIO_CHIP_FILENAME	 "/dev/gpiochip0"
 
-static const struct gpio_init_data_t gpio_init_data[] = {
+static const struct gpio_init_data_t gpio_init_data[GPIO_COUNT] = {
 	[GPIO_74HC595_OE] = {
 		.name = "74HC595_OE",
 		.gpio_no = 12,

@@ -26,13 +26,14 @@
 #ifndef __DEBOUNCER_H__
 #define __DEBOUNCER_H__
 
+#include <time.h>
 #include "peripherals_gpio.h"
-
-#define MAX_DEBOUNCE_GPIOS		16
 
 struct debouncer_state_t {
 	bool debounced_state;
+	bool initialized;
 	bool pending_change;
+	struct timespec change_time;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/

@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/time.h>
+#include <string.h>
 #include "tools.h"
 
 bool start_detached_thread(thread_function_t thread_fnc, void *argument) {
@@ -46,31 +47,60 @@ bool start_detached_thread(thread_function_t thread_fnc, void *argument) {
 	return true;
 }
 
-void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds) {
+void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds) {
+	int32_t offset_full_seconds = offset_milliseconds / 1000;
+	int32_t offset_full_nanoseconds = 1000000 * (offset_milliseconds % 1000);
+	timespec->tv_sec += offset_full_seconds;
+	timespec->tv_nsec += offset_full_nanoseconds;
+	if (timespec->tv_nsec < 0) {
+		timespec->tv_sec -= 1;
+		timespec->tv_nsec += 1000000000;
+	} else if (timespec->tv_nsec >= 1000000000) {
+		timespec->tv_sec += 1;
+		timespec->tv_nsec -= 1000000000;
+	}
+}
+
+void get_timespec_now(struct timespec *timespec) {
 	struct timeval now;
 	if (gettimeofday(&now, NULL) != 0) {
 		perror("gettimeofday");
 		return;
 	}
-
-	int32_t offset_full_seconds = offset_milliseconds / 1000;
-	int32_t offset_full_microseconds = 1000 * (offset_milliseconds % 1000);
-	now.tv_sec += offset_full_seconds;
-	now.tv_usec += offset_full_microseconds;
-	if (now.tv_usec < 0) {
-		now.tv_sec -= 1;
-		now.tv_usec += 1000000;
-	} else if (now.tv_usec >= 1000000) {
-		now.tv_sec += 1;
-		now.tv_usec -= 1000000;
-	}
-	
 	timespec->tv_sec = now.tv_sec;
 	timespec->tv_nsec = now.tv_usec * 1000;
+}
+
+void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds) {
+	get_timespec_now(timespec);
+	add_timespec_offset(timespec, offset_milliseconds);
 }
 
 int64_t timespec_diff(struct timespec *a, struct timespec *b) {
 	int64_t nanoseconds_difference = (a->tv_sec - b->tv_sec) * 1000000000;
 	nanoseconds_difference += (a->tv_nsec - b->tv_nsec);
 	return nanoseconds_difference;
+}
+
+bool timespec_lt(const struct timespec *a, const struct timespec *b) {
+	if (a->tv_sec < b->tv_sec) {
+		return true;
+	} else if (a->tv_sec > b->tv_sec) {
+		return false;
+	} else {
+		/* Seconds equal, compare nanoseconds */
+		return (a->tv_nsec < b->tv_nsec);
+	}
+}
+
+void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b) {
+	if (timespec_lt(a, b)) {
+		if (result != a) {
+			memcpy(result, a, sizeof(struct timespec));
+		}
+	} else {
+		if (result != b) {
+			memcpy(result, b, sizeof(struct timespec));
+		}
+	}
 }
