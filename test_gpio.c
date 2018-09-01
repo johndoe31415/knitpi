@@ -321,11 +321,17 @@ static int run_test_sled(int argc, char **argv) {
 }
 
 static int knit_needle_id = 104;
+static int offset_fix_l = 8;
+static int offset_fix_r = 24;
 
 static bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right) {
 	int offset_left, offset_right;
-	offset_left = 8;
-	offset_right = 24;
+
+	/* 8 - 24 is the full cycle. 16 - 20 is the minimum that still works.
+	 * We use 15 - 21 to be safe. */
+	offset_left = 15;
+	offset_right = 21;
+
 	if (!left_to_right) {
 		int tmp = offset_left;
 		offset_left = -offset_right;
@@ -376,7 +382,18 @@ static int run_test_sled_actuate(int argc, char **argv) {
 			perror("fgets");
 			break;
 		}
-		knit_needle_id++;
+		if (!strcmp(buf, "l\n")) {
+			offset_fix_l--;
+		} else if (!strcmp(buf, "L\n")) {
+			offset_fix_l++;
+		} else if (!strcmp(buf, "r\n")) {
+			offset_fix_r--;
+		} else if (!strcmp(buf, "R\n")) {
+			offset_fix_r++;
+		} else {
+			knit_needle_id++;
+		}
+		printf("New offsets: %d to %d (window %d)\n", offset_fix_l, offset_fix_r, offset_fix_r - offset_fix_l);
 	}
 }
 
