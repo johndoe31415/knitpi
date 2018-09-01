@@ -95,6 +95,29 @@ static enum gpio_t get_gpio_for_offset(unsigned int gpio_offset) {
 	return GPIO_INVALID;
 }
 
+static void read_all_gpio_values(void) {
+	/* Prepare structure of all GPIO lines */
+	struct gpiod_line_bulk input_lines = GPIOD_LINE_BULK_INITIALIZER;
+	for (int i = 0; i < GPIO_COUNT; i++) {
+		const struct gpio_init_data_t *init_data = &gpio_init_data[i];
+		if (!init_data->is_output) {
+			// Is input, wait for IRQ
+			struct gpiod_line *line = gpio_runtime_data[i].gpio_line;
+			gpiod_line_bulk_add(&input_lines, line);
+		}
+	}
+
+	/* Do a bulk read of them all */
+	int gpio_values[input_lines.num_lines];
+	gpiod_line_get_value_bulk(&input_lines, gpio_values);
+
+	/* Populate runtime data with it */
+	for (int i = 0; i < input_lines.num_lines; i++) {
+		enum gpio_t gpio_id = get_gpio_for_offset(gpiod_line_offset(input_lines.lines[i]));
+		gpio_runtime_data[gpio_id].last_value = gpio_values[i];
+	}
+}
+
 void gpio_init(void) {
 	gpio_chip = gpiod_chip_open(GPIO_CHIP_FILENAME);
 	if (!gpio_chip) {
@@ -121,6 +144,8 @@ void gpio_init(void) {
 			return;
 		}
 	}
+
+	read_all_gpio_values();
 }
 
 void gpio_active(enum gpio_t gpio) {
