@@ -325,11 +325,11 @@ static int knit_needle_id = 104;
 static bool sled_before_needle_id(int sled_position, int needle_id, bool left_to_right) {
 	int offset_left, offset_right;
 	if (left_to_right) {
-		offset_left = -16 + 8;
-		offset_right = 0 + 8;
+		offset_left = -16 + 8 + 16;
+		offset_right = 0 + 8+ 16;
 	} else {
-		offset_left = 0 - 8;
-		offset_right = 16 - 8;
+		offset_left = 0 - 8 - 16;
+		offset_right = 16 - 8 - 16;
 	}
 	/* 100:		LR 90 - 100
 	 * 			RL 110 - 90
