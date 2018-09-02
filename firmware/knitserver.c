@@ -41,18 +41,15 @@
 #include "needles.h"
 #include "pnm_reader.h"
 #include "argparse.h"
+#include "json.h"
 
 struct pgmopts_t {
+	bool force;
 	bool no_hardware;
+	unsigned int verbosity;
 	const char *unix_socket;
 };
 static struct pgmopts_t pgm_opts;
-
-
-//static struct pnmfile_t* pnm_file;
-//static int current_row = -1;
-//static bool last_direction;
-//static int stitch_count;
 
 struct server_state_t {
 	enum server_mode_t server_mode;
@@ -60,11 +57,9 @@ struct server_state_t {
 	bool belt_phase;
 	bool direction_left_to_right;
 	int32_t carriage_position;
-	uint32_t skipped_needle_cnt;
 	int32_t pattern_row;
 };
 static struct server_state_t server_state;
-
 
 static void sled_actuation_callback(int position, bool belt_phase, bool direction_left_to_right) {
 	server_state.carriage_position_valid = true;
@@ -121,11 +116,26 @@ static void sled_actuation_callback(int position, bool belt_phase, bool directio
 #endif
 }
 
+static const char *server_mode_to_str(enum server_mode_t mode) {
+	switch (mode) {
+		case MODE_OFFLINE:	return "MODE_OFFLINE";
+		case MODE_ONLINE:	return "MODE_ONLINE";
+	}
+	return "?";
+}
 
 static bool knitserver_pgmopts(enum argparse_option_t option, const char *value) {
 	switch (option) {
 		case ARG_NO_HARDWARE:
 			pgm_opts.no_hardware = true;
+			break;
+
+		case ARG_FORCE:
+			pgm_opts.force = true;
+			break;
+
+		case ARG_VERBOSE:
+			pgm_opts.verbosity++;
 			break;
 
 		case ARG_UNIX_SOCKET:
@@ -135,70 +145,42 @@ static bool knitserver_pgmopts(enum argparse_option_t option, const char *value)
 	return true;
 }
 
-static struct msg_t* read_msg(FILE *f) {
-	struct msg_t header;
-	if (fread(&header, sizeof(header), 1, f) != 1) {
-		perror("could not read header from peer");
-		return NULL;
-	}
-	if (header.payload_size > MAX_SUPPORTED_PAYLOAD_SIZE) {
-		fprintf(stderr, "Peer message indicated payload size %u bytes, maximum allowable limit is %u bytes.\n", header.payload_size, MAX_SUPPORTED_PAYLOAD_SIZE);
-		return NULL;
-	}
-
-	unsigned int msg_size = sizeof(header) + header.payload_size;
-	struct msg_t *response = malloc(msg_size);
-	if (!response) {
-		perror("malloc");
-		return NULL;
-	}
-	response->cmdcode = header.cmdcode;
-	response->payload_size = header.payload_size;
-	if (response->payload_size && (fread(response->payload, response->payload_size, 1, f) != 1)) {
-		perror("could not read data from peer");
-		free(response);
-		return NULL;
-	}
-	return response;
-}
-
-static bool respond_msg(FILE *f, const void *response_data, unsigned int response_length) {
-	return fwrite(response_data, response_length, 1, f) == 1;
-}
-
-static bool handle_message(FILE *f, struct msg_t *msg) {
-	if ((msg->cmdcode == CMD_GET_STATUS) && (msg->payload_size == 0)) {
-		struct rsp_get_info_msg_t response = {
-			.header = {
-				.cmdcode = RSP_GET_STATUS,
-				.payload_size = sizeof(response) - sizeof(response.header),
-			},
-			.server_mode = server_state.server_mode,
-			.carriage_position_valid = server_state.carriage_position_valid,
-			.belt_phase = server_state.belt_phase,
-			.direction_left_to_right = server_state.direction_left_to_right,
-			.carriage_position = server_state.carriage_position,
-			.skipped_needle_cnt = server_state.skipped_needle_cnt,
-		};
-		return respond_msg(f, &response, sizeof(response));
-	}
-	return false;
-}
-
 static void* client_handler(void *vf) {
 	FILE *f = (FILE*)vf;
 
 	while (true) {
-		struct msg_t *msg = read_msg(f);
-		if (msg == NULL) {
-			fprintf(stderr, "Could not read message from peer, closing connection.\n");
+		char line[256];
+		if (!fgets(line, sizeof(line), f)) {
 			break;
 		}
-		bool success = handle_message(f, msg);
-		free(msg);
-		if (!success) {
-			fprintf(stderr, "Unexpected message received from peer, cmdcode 0x%x, closing connection.\n", msg->cmdcode);
-			break;
+		int len = strlen(line);
+		if (len && (line[len - 1] == '\n')) {
+			line[--len] = 0;
+		}
+		if (len && (line[len - 1] == '\r')) {
+			line[--len] = 0;
+		}
+
+		if (!strcmp(line, "status")) {
+			if (pgm_opts.verbosity >= 2) {
+				fprintf(stderr, "Sending status to client.\n");
+			}
+			fprintf(f, "{");
+			json_print_str(f, "server_mode", server_mode_to_str(server_state.server_mode));
+			json_print_bool(f, "carriage_position_valid", server_state.carriage_position_valid);
+			json_print_bool(f, "belt_phase", server_state.belt_phase);
+			json_print_bool(f, "direction_left_to_right", server_state.direction_left_to_right);
+			json_print_int(f, "carriage_position", server_state.carriage_position);
+			json_print_int(f, "skipped_needles_cnt", sled_get_skipped_needles_cnt());
+			json_print_bool(f, "pattern_row", server_state.pattern_row);
+			fprintf(f, "\"msg_type\": \"status\"}\n");
+		} else {
+			if (pgm_opts.verbosity >= 1) {
+				fprintf(stderr, "Client sent unknown command.\n");
+			}
+			fprintf(f, "{");
+			json_printf_str(f, "error_msg", "Request (length %d bytes) not understood.", len);
+			fprintf(f, "\"msg_type\": \"error\"}\n");
 		}
 	}
 	fclose(f);
@@ -237,6 +219,9 @@ static bool start_server(void) {
 			close(sd);
 			return false;
 		}
+		if (pgm_opts.verbosity >= 1) {
+			fprintf(stderr, "Client connected.\n");
+		}
 
 		FILE *f = fdopen(fd, "r+");
 		if (!f) {
@@ -267,6 +252,10 @@ int main(int argc, char **argv) {
 		start_debouncer_thread(sled_input);
 		start_gpio_thread(debouncer_input, true);
 		spi_clear(SPI_74HC595, 2);
+	}
+
+	if (pgm_opts.force) {
+		unlink(pgm_opts.unix_socket);
 	}
 
 	if (!start_server()) {

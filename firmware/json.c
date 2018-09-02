@@ -21,19 +21,29 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __SLED_H__
-#define __SLED_H__
-
+#include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
-#include <time.h>
-#include "peripherals_gpio.h"
+#include <stdarg.h>
+#include "json.h"
 
-typedef void (*sled_callback_t)(int position, bool belt_phase, bool left_to_right);
+void json_print_str(FILE *f, const char *key, const char *value) {
+	fprintf(f, "\"%s\": \"%s\", ", key, value);
+}
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-unsigned int sled_get_skipped_needles_cnt(void);
-void sled_set_callback(sled_callback_t callback);
-void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
+void json_print_bool(FILE *f, const char *key, bool value) {
+	fprintf(f, "\"%s\": %s, ", key, value ? "true" : "false");
+}
 
-#endif
+void json_printf_str(FILE *f, const char *key, const char *msg, ...) {
+	va_list ap;
+	char buffer[1024];
+	va_start(ap, msg);
+	vsnprintf(buffer, sizeof(buffer), msg, ap);
+	va_end(ap);
+	json_print_str(f, key, buffer);
+}
+
+void json_print_int(FILE *f, const char *key, int32_t value) {
+	fprintf(f, "\"%s\": %d, ", key, value);
+}

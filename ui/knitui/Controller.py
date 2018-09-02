@@ -50,9 +50,11 @@ class Controller(object):
 
 	def ws_status(self, ws):
 		while True:
-			status = self._server_connection.get_status()
-			status_json = json.dumps(status._asdict())
-			ws.send(status_json)
+			status_json = self._server_connection.get_status()
+			if status_json is not None:
+				ws.send(status_json)
+			else:
+				time.sleep(1)
 			time.sleep(0.25)
 
 	def ws_echo(self, ws):

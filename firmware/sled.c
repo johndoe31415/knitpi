@@ -30,12 +30,16 @@
 static int sled_position = 0;
 static uint8_t last_rotary = 0xff;
 static bool pos_valid = false;
-static unsigned int skip_needle_count = 0;
+static unsigned int skipped_needles_cnt = 0;
 static sled_callback_t sled_callback = NULL;
 static int last_reported_position = 0;
 static bool belt_phase = false;
 
 static const int fixed_position_right = 794;
+
+unsigned int sled_get_skipped_needles_cnt(void) {
+	return skipped_needles_cnt;
+}
 
 static int rotary_get_position(void) {
 	return sled_position / 4;
@@ -56,7 +60,7 @@ static void rotary_encoder_movement(void) {
 		/* Movement to right */
 		sled_position++;
 	} else {
-		skip_needle_count++;
+		skipped_needles_cnt++;
 	}
 	last_rotary = pos;
 }

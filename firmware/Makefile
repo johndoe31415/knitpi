@@ -5,7 +5,7 @@ CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-dec
 #CFLAGS += -Wimplicit-fallthrough
 LDFLAGS := -pthread -lgpiod
 OBJS :=  test_gpio.o emit_pattern.o knitserver.o
-OBJS += peripherals.o peripherals_gpio.o peripherals_spi.o gpio_thread.o tools.o debouncer.o isleep.o sled.o needles.o pnm_reader.o argparse.o
+OBJS += peripherals.o peripherals_gpio.o peripherals_spi.o gpio_thread.o tools.o debouncer.o isleep.o sled.o needles.o pnm_reader.o argparse.o json.o
 BINARIES := test_gpio emit_pattern knitserver
 
 all: $(BINARIES)
@@ -16,7 +16,7 @@ test_gpio: test_gpio.o peripherals.o peripherals_gpio.o peripherals_spi.o gpio_t
 emit_pattern: emit_pattern.o peripherals.o peripherals_gpio.o peripherals_spi.o gpio_thread.o tools.o debouncer.o isleep.o sled.o needles.o pnm_reader.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-knitserver: knitserver.o peripherals.o peripherals_gpio.o peripherals_spi.o gpio_thread.o tools.o debouncer.o isleep.o sled.o needles.o pnm_reader.o argparse.o
+knitserver: knitserver.o peripherals.o peripherals_gpio.o peripherals_spi.o gpio_thread.o tools.o debouncer.o isleep.o sled.o needles.o pnm_reader.o argparse.o json.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:

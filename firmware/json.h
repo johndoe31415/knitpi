@@ -21,19 +21,18 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __SLED_H__
-#define __SLED_H__
+#ifndef __JSON_H__
+#define __JSON_H__
 
+#include <stdio.h>
 #include <stdbool.h>
-#include <time.h>
-#include "peripherals_gpio.h"
-
-typedef void (*sled_callback_t)(int position, bool belt_phase, bool left_to_right);
+#include <stdint.h>
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-unsigned int sled_get_skipped_needles_cnt(void);
-void sled_set_callback(sled_callback_t callback);
-void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value);
+void json_print_str(FILE *f, const char *key, const char *value);
+void json_print_bool(FILE *f, const char *key, bool value);
+void json_printf_str(FILE *f, const char *key, const char *msg, ...);
+void json_print_int(FILE *f, const char *key, int32_t value);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

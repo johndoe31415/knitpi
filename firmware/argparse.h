@@ -5,7 +5,7 @@
  *
  *   Do not edit it by hand, your changes will be overwritten.
  *
- *   Generated at: 2018-09-02 16:42:39
+ *   Generated at: 2018-09-02 17:18:05
  */
 
 #ifndef __ARGPARSE_H__
@@ -14,7 +14,9 @@
 #include <stdbool.h>
 
 enum argparse_option_t {
+	ARG_FORCE,
 	ARG_NO_HARDWARE,
+	ARG_VERBOSE,
 	ARG_UNIX_SOCKET,
 };
 

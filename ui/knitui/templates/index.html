@@ -16,8 +16,8 @@ websocket.onmessage = wsevent_onmessage;
 websocket.onerror = wsevent_onerror;
 
 function wsevent_onmessage(event) {
-	msg = JSON.parse(event.data);
-
+	const msg = JSON.parse(event.data);
+	console.log(msg);
 	skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
 	carriage_position_span.innerHTML = msg["carriage_position"];
 }

@@ -24,38 +24,9 @@
 #ifndef __KNITSERVER_H__
 #define __KNITSERVER_H__
 
-#define MAX_SUPPORTED_PAYLOAD_SIZE		(3 * 1024 * 1024)
-
-enum socket_cmd_t {
-	CMD_GET_STATUS = 0,
-	RSP_GET_STATUS = 1,
-	CMD_SET_MODE = 2,
-	RSP_SET_MODE = 3,
-	CMD_SET_PATTERN = 4,
-	RSP_SET_PATTERN = 5,
-};
-
 enum server_mode_t {
-	MODE_OFFLINE = 0,
-	MODE_ONLINE = 1,
-};
-
-struct msg_t {
-	uint32_t cmdcode;
-	uint32_t payload_size;
-	uint8_t payload[];
-};
-
-struct rsp_get_info_msg_t {
-	struct msg_t header;
-	uint16_t server_mode;
-	bool carriage_position_valid;
-	bool belt_phase;
-	bool direction_left_to_right;
-	int32_t carriage_position;
-	uint32_t skipped_needle_cnt;
-	int32_t pattern_row;
-	uint16_t pattern_width, pattern_height;
+	MODE_OFFLINE,
+	MODE_ONLINE,
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
