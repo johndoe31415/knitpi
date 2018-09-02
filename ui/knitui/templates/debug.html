@@ -1,0 +1,76 @@
+<%inherit file="base.html"/>
+<%block name="title">Debugging</%block>
+
+<h2>WebSocket Test</h2>
+<select name="uri" id="ws_uri">
+	<option value="ws-echo">Echo test</option>
+	<option value="ws-push">Push test</option>
+</select>
+<input type="button" value="Connect" onclick="wstest_connect()">
+<input type="button" value="Disconnect" onclick="wstest_disconnect()">
+<input type="button" value="Send message" onclick="wstest_send_msg()">
+<input type="button" value="Clear log" onclick="wstest_clear_log()">
+
+<div>
+	<textarea id="ws_logmsgs" rows="10" cols="120" style="font-family: Latin Modern Mono,Inconsolata,monospace; color: black; background: #eee" readonly="true"></textarea>
+</div>
+
+<script language="JavaScript">
+var ws_logmsgs = document.getElementById("ws_logmsgs");
+var websocket = null;
+
+function wstest_logmsg(msg) {
+	ws_logmsgs.value += msg + "\n";
+	ws_logmsgs.scrollTop = ws_logmsgs.scrollHeight;
+}
+
+function wstest_connect() {
+	const select_uri = document.getElementById("ws_uri");
+	const selected_option = select_uri.selectedOptions[0].value;
+	const websockets_url = "ws://" + window.location.host + "/debug/" + selected_option;
+	wstest_logmsg("Connecting to " + websockets_url);
+	websocket = new WebSocket(websockets_url);
+	websocket.onopen = wsevent_onopen;
+	websocket.onclose = wsevent_onclose;
+	websocket.onmessage = wsevent_onmessage;
+	websocket.onerror = wsevent_onerror;
+}
+
+function wstest_disconnect() {
+	if (websocket) {
+		wstest_logmsg("Disconnecting.");
+		websocket.close();
+		websocket = null;
+	} else {
+		wstest_logmsg("Not connected.");
+	}
+}
+
+function wstest_send_msg() {
+	if (websocket) {
+		let msg = "This is a message."
+		wstest_logmsg("-> " + msg);
+		websocket.send(msg);
+	}
+}
+
+function wstest_clear_log() {
+	ws_logmsgs.value = "";
+}
+
+function wsevent_onopen(evt) {
+	wstest_logmsg("Connected.");
+}
+
+function wsevent_onclose(evt) {
+	wstest_logmsg("Disconnected.");
+}
+
+function wsevent_onmessage(evt) {
+	wstest_logmsg("<- " + evt.data);
+}
+
+function wsevent_onerror(evt) {
+	wstest_logmsg("Error: " + evt);
+}
+</script>
