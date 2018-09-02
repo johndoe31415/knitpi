@@ -1,0 +1,4 @@
+test_gpio
+emit_pattern
+*.o
+a.out
