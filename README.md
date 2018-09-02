@@ -23,6 +23,12 @@ the required header files using:
 # apt-get install libgpiod-dev
 ```
 
+To run the UI, you'll need uwsgi and its Python3 plugin:
+
+```
+# apt-get install uwsgi uwsgi-plugin-python3
+```
+
 ## Hardware
 I've build a custom Raspberry Pi shield on prototype board from scratch. The
 schematics [are in the Git
