@@ -5,7 +5,7 @@
  *
  *   Do not edit it by hand, your changes will be overwritten.
  *
- *   Generated at: 2018-09-02 14:23:16
+ *   Generated at: 2018-09-02 16:42:39
  */
 
 #include <stdint.h>
@@ -17,12 +17,14 @@
 #include "argparse.h"
 
 enum argparse_option_internal_t {
-	ARG_UNIX_SOCKET_LONG = 1000,
+	ARG_NO_HARDWARE_LONG = 1000,
+	ARG_UNIX_SOCKET_LONG = 1001,
 };
 
 bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback) {
 	const char *short_options = "";
 	struct option long_options[] = {
+		{ "no-hardware",                      no_argument, 0, ARG_NO_HARDWARE_LONG },
 		{ "unix_socket",                      required_argument, 0, ARG_UNIX_SOCKET_LONG },
 		{ 0 }
 	};
@@ -34,6 +36,12 @@ bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback
 		}
 		enum argparse_option_internal_t arg = (enum argparse_option_internal_t)optval;
 		switch (arg) {
+			case ARG_NO_HARDWARE_LONG:
+				if (!argument_callback(ARG_NO_HARDWARE, optarg)) {
+					return false;
+				}
+				break;
+
 			default:
 				return false;
 		}
@@ -58,12 +66,16 @@ bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback
 }
 
 void argparse_show_syntax(void) {
-	fprintf(stderr, "usage: knitserver socket\n");
+	fprintf(stderr, "usage: knitserver [--no-hardware] socket\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Brother KH-930 knitting server\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "positional arguments:\n");
-	fprintf(stderr, "  socket  UNIX socket that the KnitPi knitting server listens on.\n");
+	fprintf(stderr, "  socket         UNIX socket that the KnitPi knitting server listens on.\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "optional arguments:\n");
+	fprintf(stderr, "  --no-hardware  Do not initialize actual hardware. Used for debugging\n");
+	fprintf(stderr, "                 purposes only.\n");
 }
 
 void argparse_parse_or_die(int argc, char **argv, argparse_callback_t argument_callback) {
@@ -79,6 +91,7 @@ void argparse_parse_or_die(int argc, char **argv, argparse_callback_t argument_c
 
 static const char *option_enum_to_str(enum argparse_option_t option) {
 	switch (option) {
+		case ARG_NO_HARDWARE: return "ARG_NO_HARDWARE";
 		case ARG_UNIX_SOCKET: return "ARG_UNIX_SOCKET";
 	}
 	return "UNKNOWN";

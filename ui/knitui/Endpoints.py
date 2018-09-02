@@ -33,6 +33,10 @@ def index():
 def debug():
 	return ctrlr.debug(flask.request)
 
+@websocket.route("/ws/status")
+def ws_status(ws):
+	return ctrlr.ws_status(ws)
+
 @websocket.route("/debug/ws-echo")
 def ws_echo(ws):
 	return ctrlr.ws_echo(ws)

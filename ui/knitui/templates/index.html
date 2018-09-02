@@ -1,10 +1,28 @@
 <%inherit file="base.html"/>
 <%block name="title">Status</%block>
 					
-<h2 class="content-subhead">Muh Kuh</h2>
 <p>
-
-Muh!
+Skipped needles: <span id="skipped_needles_cnt">-</span><br />
+Carriage position: <span id="carriage_position">-</span>
 </p>
 
+<script language="JavaScript">
+const skipped_needles_cnt_span = document.getElementById("skipped_needles_cnt");
+const carriage_position_span = document.getElementById("carriage_position");
 
+const websockets_url = "ws://" + window.location.host + "/ws/status";
+const websocket = new WebSocket(websockets_url);
+websocket.onmessage = wsevent_onmessage;
+websocket.onerror = wsevent_onerror;
+
+function wsevent_onmessage(event) {
+	msg = JSON.parse(event.data);
+
+	skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
+	carriage_position_span.innerHTML = msg["carriage_position"];
+}
+
+function wsevent_onerror(event) {
+	console.log("Websocket error: " + event);
+}
+</script>

@@ -1,7 +1,7 @@
 .PHONY: test
 
 CFLAGS := -O3 -std=c11 -D_POSIX_C_SOURCE=199309L -D_XOPEN_SOURCE=500
-CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow
+CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wswitch
 #CFLAGS += -Wimplicit-fallthrough
 LDFLAGS := -pthread -lgpiod
 OBJS :=  test_gpio.o emit_pattern.o knitserver.o

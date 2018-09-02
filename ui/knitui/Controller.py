@@ -21,22 +21,39 @@
 
 import time
 import random
+import json
 import mako.lookup
+from knitui.ServerConnection import ServerConnection
 
 class Controller(object):
 	def __init__(self):
+		self._config = {
+			"server_socket":		"../firmware/foo",
+		}
 		self._template_lookup = mako.lookup.TemplateLookup([ "knitui/templates" ], input_encoding = "utf-8", strict_undefined = True)
+		self._server_connection = ServerConnection(self._config["server_socket"])
 
-	def _serve(self, template_name):
+	def _serve(self, template_name, args = None):
+		if args is None:
+			args = { }
 		template = self._template_lookup.get_template(template_name)
-		result = template.render()
+		result = template.render(**args)
 		return result
 
 	def debug(self, request):
 		return self._serve("debug.html")
 
 	def index(self, request):
-		return self._serve("index.html")
+		args = { }
+		args["status"] = self._server_connection.get_status()
+		return self._serve("index.html", args)
+
+	def ws_status(self, ws):
+		while True:
+			status = self._server_connection.get_status()
+			status_json = json.dumps(status._asdict())
+			ws.send(status_json)
+			time.sleep(0.25)
 
 	def ws_echo(self, ws):
 		ws.send(b"Welcome to the Echo server")

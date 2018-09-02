@@ -43,17 +43,37 @@
 #include "argparse.h"
 
 struct pgmopts_t {
+	bool no_hardware;
 	const char *unix_socket;
 };
 static struct pgmopts_t pgm_opts;
 
-#if 0
-static struct pnmfile_t* pnm_file;
-static int current_row = -1;
-static bool last_direction;
-static int stitch_count;
 
-static void sled_actuation_callback(int position, bool belt_phase, bool left_to_right) {
+//static struct pnmfile_t* pnm_file;
+//static int current_row = -1;
+//static bool last_direction;
+//static int stitch_count;
+
+struct server_state_t {
+	enum server_mode_t server_mode;
+	bool carriage_position_valid;
+	bool belt_phase;
+	bool direction_left_to_right;
+	int32_t carriage_position;
+	uint32_t skipped_needle_cnt;
+	int32_t pattern_row;
+};
+static struct server_state_t server_state;
+
+
+static void sled_actuation_callback(int position, bool belt_phase, bool direction_left_to_right) {
+	server_state.carriage_position_valid = true;
+	server_state.carriage_position = position;
+	server_state.belt_phase = belt_phase;
+	server_state.direction_left_to_right = direction_left_to_right;
+
+#if 0
+
 	if (last_direction != left_to_right) {
 		/* Direction reversed. */
 		if (stitch_count > 30) {
@@ -98,12 +118,16 @@ static void sled_actuation_callback(int position, bool belt_phase, bool left_to_
 	printf("Serving row %d for %d (%d stitches, %d active solenoids)\n", current_row, position, stitch_count, active_solenoid_cnt);
 	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
 	last_direction = left_to_right;
-}
 #endif
+}
 
 
 static bool knitserver_pgmopts(enum argparse_option_t option, const char *value) {
 	switch (option) {
+		case ARG_NO_HARDWARE:
+			pgm_opts.no_hardware = true;
+			break;
+
 		case ARG_UNIX_SOCKET:
 			pgm_opts.unix_socket = value;
 			break;
@@ -130,7 +154,7 @@ static struct msg_t* read_msg(FILE *f) {
 	}
 	response->cmdcode = header.cmdcode;
 	response->payload_size = header.payload_size;
-	if (fread(response->payload, response->payload_size, 1, f) != 1) {
+	if (response->payload_size && (fread(response->payload, response->payload_size, 1, f) != 1)) {
 		perror("could not read data from peer");
 		free(response);
 		return NULL;
@@ -138,8 +162,27 @@ static struct msg_t* read_msg(FILE *f) {
 	return response;
 }
 
-static void handle_message(FILE *f, struct msg_t *msg) {
-	fprintf(stderr, "Incoming msg.\n");
+static bool respond_msg(FILE *f, const void *response_data, unsigned int response_length) {
+	return fwrite(response_data, response_length, 1, f) == 1;
+}
+
+static bool handle_message(FILE *f, struct msg_t *msg) {
+	if ((msg->cmdcode == CMD_GET_STATUS) && (msg->payload_size == 0)) {
+		struct rsp_get_info_msg_t response = {
+			.header = {
+				.cmdcode = RSP_GET_STATUS,
+				.payload_size = sizeof(response) - sizeof(response.header),
+			},
+			.server_mode = server_state.server_mode,
+			.carriage_position_valid = server_state.carriage_position_valid,
+			.belt_phase = server_state.belt_phase,
+			.direction_left_to_right = server_state.direction_left_to_right,
+			.carriage_position = server_state.carriage_position,
+			.skipped_needle_cnt = server_state.skipped_needle_cnt,
+		};
+		return respond_msg(f, &response, sizeof(response));
+	}
+	return false;
 }
 
 static void* client_handler(void *vf) {
@@ -148,11 +191,15 @@ static void* client_handler(void *vf) {
 	while (true) {
 		struct msg_t *msg = read_msg(f);
 		if (msg == NULL) {
-			fprintf(stderr, "Could not read message from peer.\n");
+			fprintf(stderr, "Could not read message from peer, closing connection.\n");
 			break;
 		}
-		handle_message(f, msg);
+		bool success = handle_message(f, msg);
 		free(msg);
+		if (!success) {
+			fprintf(stderr, "Unexpected message received from peer, cmdcode 0x%x, closing connection.\n", msg->cmdcode);
+			break;
+		}
 	}
 	fclose(f);
 	return NULL;
@@ -211,6 +258,17 @@ static bool start_server(void) {
 
 int main(int argc, char **argv) {
 	argparse_parse_or_die(argc, argv, knitserver_pgmopts);
+	if (!pgm_opts.no_hardware) {
+		if (!all_peripherals_init()) {
+			fprintf(stderr, "Failed to initialize peripherals, bailing out.\n");
+			exit(EXIT_FAILURE);
+		}
+		sled_set_callback(sled_actuation_callback);
+		start_debouncer_thread(sled_input);
+		start_gpio_thread(debouncer_input, true);
+		spi_clear(SPI_74HC595, 2);
+	}
+
 	if (!start_server()) {
 		fprintf(stderr, "Failed to start server.\n");
 		exit(EXIT_FAILURE);
