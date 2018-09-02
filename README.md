@@ -35,10 +35,10 @@ found here](https://circuitmaker.com/Projects/Details/johndoe31415/KnittingPi).
 knitpi uses third-party code that is included in the tree for ease of use. In
 particular, it uses:
 
-  * The (flask_uwsgi_websocket module of Zach Kelling /
-    @zeekay)[https://github.com/zeekay/flask-uwsgi-websocket]. It is licensed
+  * The [flask_uwsgi_websocket module of Zach Kelling / @zeekay]
+    (https://github.com/zeekay/flask-uwsgi-websocket). It is licensed
     under the MIT license.
-  * The (pure.css framework)[https://github.com/pure-css/pure]. It is licensed
+  * The [pure.css framework](https://github.com/pure-css/pure). It is licensed
     under the Yahoo! Inc BSD license.
 
 My sincere thanks go out to both of these.
