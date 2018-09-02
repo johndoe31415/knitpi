@@ -29,21 +29,21 @@
 #include <errno.h>
 #include <string.h>
 #include "pnm_reader.h"
+#include "pattern.h"
 
-struct pnmfile_t* pnmfile_read(const char *filename) {
-	struct pnmfile_t *pnmfile = calloc(1, sizeof(struct pnmfile_t));
+struct pattern_t* pnmfile_read(const char *filename) {
 	FILE *f = fopen(filename, "r");
 	if (!f) {
 		perror(filename);
-		pnmfile_free(pnmfile);
 		return NULL;
 	}
 
 	char line[256];
+	int width = 0;
+	int height = 0;
 	for (int i = 0; i < 3; i++) {
 		if (fgets(line, sizeof(line), f) == NULL) {
 			perror("Error reading line from file");
-			pnmfile_free(pnmfile);
 			return NULL;
 		}
 		if (line[0] == '#') {
@@ -63,83 +63,57 @@ struct pnmfile_t* pnmfile_read(const char *filename) {
 		if (i == 0) {
 			if (strcmp(line, "P6")) {
 				fprintf(stderr, "Unsupported PNM file, header not recognized.\n");
-				pnmfile_free(pnmfile);
 				return NULL;
 			}
 		} else if (i == 1) {
 			char *token = strtok(line, " ");
 			if (!token) {
 				fprintf(stderr, "Unsupported PNM file, width could not be read.\n");
-				pnmfile_free(pnmfile);
 				return NULL;
 			}
-			pnmfile->width = atoi(token);
+			width = atoi(token);
 			token = strtok(NULL, " ");
 			if (!token) {
 				fprintf(stderr, "Unsupported PNM file, height could not be read.\n");
-				pnmfile_free(pnmfile);
 				return NULL;
 			}
-			pnmfile->height = atoi(token);
-			if ((pnmfile->width < 1) || (pnmfile->height < 1)) {
-				fprintf(stderr, "Unsupported PNM file size: %d x %d pixels.\n", pnmfile->width, pnmfile->height);
-				pnmfile_free(pnmfile);
+			height = atoi(token);
+			if ((width < 1) || (height < 1)) {
+				fprintf(stderr, "Unsupported PNM file size: %d x %d pixels.\n", width, height);
 				return NULL;
 			}
 		} else if (i == 2) {
 			int depth = atoi(line);
 			if (depth != 255) {
 				fprintf(stderr, "Unsupported PNM color depth: %d colors.\n", depth);
-				pnmfile_free(pnmfile);
 				return NULL;
 			}
 		}
 	}
 
-	pnmfile->image_data = malloc(pnmfile->width * pnmfile->height);
-	if (!pnmfile->image_data) {
-		fprintf(stderr, "Failed to allocate %d bytes for %d x %d pixel PNM file %s: %s\n", pnmfile->width * pnmfile->height, pnmfile->width, pnmfile->height, filename, strerror(errno));
-		pnmfile_free(pnmfile);
+	struct pattern_t *pattern = pattern_new(width, height);
+	if (!pattern) {
+		fprintf(stderr, "Failed to allocate pattern data while reading PNM image.\n");
 		return NULL;
 	}
 
-	for (int y = 0; y < pnmfile->height; y++) {
-		uint8_t row_data[pnmfile->width * 3];
-		if (fread(row_data, sizeof(row_data), 1, f) != 1) {
+	for (int y = 0; y < pattern->height; y++) {
+		uint8_t rgb_row_data[pattern->width * 3];
+		if (fread(rgb_row_data, sizeof(rgb_row_data), 1, f) != 1) {
 			fprintf(stderr, "Failed to read row data from PNM file, y = %d.\n", y);
-			pnmfile_free(pnmfile);
+			pattern_free(pattern);
 		}
-		for (int x = 0; x < pnmfile->width; x++) {
-			uint8_t r = row_data[(3 * x) + 0];
-			uint8_t g = row_data[(3 * x) + 1];
-			uint8_t b = row_data[(3 * x) + 2];
+
+		uint8_t *pattern_row_data = pattern_row_rw(pattern, y);
+		for (int x = 0; x < pattern->width; x++) {
+			uint8_t r = rgb_row_data[(3 * x) + 0];
+			uint8_t g = rgb_row_data[(3 * x) + 1];
+			uint8_t b = rgb_row_data[(3 * x) + 2];
 			uint8_t gray = r & g & b;
-			pnmfile->image_data[(pnmfile->width * y) + x] = gray;
+			pattern_row_data[x] = ~gray;
 		}
 	}
 
-	return pnmfile;
+	return pattern;
 }
 
-const uint8_t* pnmfile_row(const struct pnmfile_t *pnmfile, unsigned int y) {
-	return pnmfile->image_data + (pnmfile->width * y);
-}
-
-void pnmfile_dump_row(const struct pnmfile_t *pnmfile, unsigned int y) {
-	const uint8_t *row = pnmfile_row(pnmfile, y);
-	for (int x = 0; x < pnmfile->width; x++) {
-		printf("%s", row[x] ? " " : "•");
-	}
-	printf("\n");
-}
-
-void pnmfile_dump(const struct pnmfile_t *pnmfile) {
-	for (int y = 0; y < pnmfile->height; y++) {
-		pnmfile_dump_row(pnmfile, y);
-	}
-}
-
-void pnmfile_free(struct pnmfile_t *pnmfile) {
-	free(pnmfile->image_data);
-	free(pnmfile);
-}

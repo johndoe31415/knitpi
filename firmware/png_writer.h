@@ -21,13 +21,21 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __PNM_READER_H__
-#define __PNM_READER_H__
+#ifndef __PNG_WRITER_H__
+#define __PNG_WRITER_H__
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "pattern.h"
 
+struct png_write_options_t {
+	unsigned int pixel_width, pixel_height;
+	unsigned int grid_width;
+	uint32_t grid_color;
+};
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct pattern_t* pnmfile_read(const char *filename);
+bool png_write_pattern(const struct pattern_t *pattern, const char *filename, const struct png_write_options_t *options);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

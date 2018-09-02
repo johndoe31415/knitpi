@@ -36,7 +36,7 @@
 #include "needles.h"
 #include "pnm_reader.h"
 
-static struct pnmfile_t* pnm_file;
+static struct pattern_t* pattern;
 static int current_row = -1;
 static bool last_direction;
 static int stitch_count;
@@ -48,8 +48,8 @@ static void sled_actuation_callback(int position, bool belt_phase, bool left_to_
 			current_row++;
 			stitch_count = 0;
 			printf("Next row: %d\n", current_row);
-			if (current_row < pnm_file->height) {
-				pnmfile_dump_row(pnm_file, current_row);
+			if (current_row < pattern->height) {
+				pattern_dump_row(pattern, current_row);
 			} else {
 				printf("======================================================================================================\n");
 			}
@@ -57,9 +57,9 @@ static void sled_actuation_callback(int position, bool belt_phase, bool left_to_
 	}
 
 	uint8_t spi_data[] = { 0, 0 };
-	if ((current_row >= 0) && (current_row < pnm_file->height)) {
+	if ((current_row >= 0) && (current_row < pattern->height)) {
 		stitch_count++;
-		const uint8_t *row_data = pnmfile_row(pnm_file, current_row);
+		const uint8_t *row_data = pattern_row(pattern, current_row);
 
 
 		for (int knit_needle_id = 0; knit_needle_id < 200; knit_needle_id++) {
@@ -72,7 +72,7 @@ static void sled_actuation_callback(int position, bool belt_phase, bool left_to_
 	} else if ((position == 0) && (current_row == -1)) {
 		current_row = 0;
 		printf("Starting pattern.\n");
-		pnmfile_dump_row(pnm_file, current_row);
+		pattern_dump_row(pattern, current_row);
 	}
 
 	int active_solenoid_cnt = 0;
@@ -93,13 +93,13 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "syntax: %s [pnm filename]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-	pnm_file = pnmfile_read(argv[1]);
-	if (!pnm_file) {
+	pattern = pnmfile_read(argv[1]);
+	if (!pattern) {
 		fprintf(stderr, "Failed to read input file, bailing out.\n");
 		exit(EXIT_FAILURE);
 	}
 	printf("Emitting pattern.\n");
-	pnmfile_dump(pnm_file);
+	pattern_dump(pattern);
 	if (!all_peripherals_init()) {
 		fprintf(stderr, "Failed to initialize peripherals, bailing out.\n");
 		exit(EXIT_FAILURE);

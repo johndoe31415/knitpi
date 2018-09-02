@@ -21,13 +21,21 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __PNM_READER_H__
-#define __PNM_READER_H__
+#ifndef __PATTERN_H__
+#define __PATTERN_H__
 
-#include "pattern.h"
+struct pattern_t {
+	unsigned int width, height;
+	uint8_t *pixel_data;
+};
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct pattern_t* pnmfile_read(const char *filename);
+struct pattern_t* pattern_new(unsigned int width, unsigned int height);
+uint8_t* pattern_row_rw(const struct pattern_t *pattern, unsigned int y);
+const uint8_t* pattern_row(const struct pattern_t *pattern, unsigned int y);
+void pattern_dump_row(const struct pattern_t *pattern, unsigned int y);
+void pattern_dump(const struct pattern_t *pattern);
+void pattern_free(struct pattern_t *pattern);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

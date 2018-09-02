@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -33,6 +34,9 @@
 #include "debouncer.h"
 #include "sled.h"
 #include "needles.h"
+#include "pattern.h"
+#include "pnm_reader.h"
+#include "png_writer.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -52,6 +56,8 @@ static int run_test_gpio_irqs_debounced(int argc, char **argv);
 static int run_test_sled(int argc, char **argv);
 static int run_test_sled_actuate(int argc, char **argv);
 static int run_test_needle_name(int argc, char **argv);
+static int run_test_read_pnm(int argc, char **argv);
+static int run_test_write_png(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
 static int knit_needle_id = 104;
@@ -116,6 +122,16 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "needle-name",
 		.description = "Test needle names",
 		.run_test = run_test_needle_name,
+	},
+	{
+		.mode_name = "read-pnm",
+		.description = "Read PNM file",
+		.run_test = run_test_read_pnm,
+	},
+	{
+		.mode_name = "write-png",
+		.description = "Write PNG file",
+		.run_test = run_test_write_png,
 	},
 };
 
@@ -370,6 +386,38 @@ static int run_test_needle_name(int argc, char **argv) {
 		fprintf(stderr, "G %-3d: %3d\n", i, needle_pos);
 	}
 	return 0;
+}
+
+static int run_test_read_pnm(int argc, char **argv) {
+	if (argc != 3) {
+		fprintf(stderr, "argument: [pnmfile]\n");
+		exit(EXIT_FAILURE);
+	}
+	const char *filename = argv[2];
+	struct pattern_t *pattern = pnmfile_read(filename);
+	if (pattern) {
+		fprintf(stderr, "Image: %d x %d\n", pattern->width, pattern->height);
+		pattern_dump(pattern);
+		pattern_free(pattern);
+	} else {
+		fprintf(stderr, "Could not read %s.\n", filename);
+	}
+}
+
+static int run_test_write_png(int argc, char **argv) {
+	if (argc != 4) {
+		fprintf(stderr, "argument: [pnmfile] [pngfile]\n");
+		exit(EXIT_FAILURE);
+	}
+	const char *pnm_filename = argv[2];
+	const char *png_filename = argv[3];
+	struct pattern_t *pattern = pnmfile_read(pnm_filename);
+	if (pattern) {
+		png_write_pattern(pattern, png_filename, NULL);
+		pattern_free(pattern);
+	} else {
+		fprintf(stderr, "Could not read %s.\n", pnm_filename);
+	}
 }
 
 static void show_syntax(const char *errmsg) {

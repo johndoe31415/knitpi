@@ -1,5 +1,5 @@
 knitserver
-test_gpio
+test_fncs
 emit_pattern
 *.o
 a.out

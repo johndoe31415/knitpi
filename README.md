@@ -23,10 +23,11 @@ the required header files using:
 # apt-get install libgpiod-dev
 ```
 
-To run the UI, you'll need uwsgi and its Python3 plugin:
+To run the UI, you'll need uwsgi and its Python3 plugin, gevent as well as
+Flask and Mako:
 
 ```
-# apt-get install uwsgi uwsgi-plugin-python3
+# apt-get install uwsgi uwsgi-plugin-python3 python3-gevent python3-flask python3-mako
 ```
 
 ## Hardware

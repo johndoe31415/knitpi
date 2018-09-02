@@ -6,9 +6,15 @@ Skipped needles: <span id="skipped_needles_cnt">-</span><br />
 Carriage position: <span id="carriage_position">-</span>
 </p>
 
+<div>
+	<img src="/static/img/needles.png" /><br />
+	<img src="/static/img/arrow.png" id="carriage_position_arrow" style="position: relative; left: 0px; top: -10px" />
+</div>
+
 <script language="JavaScript">
 const skipped_needles_cnt_span = document.getElementById("skipped_needles_cnt");
 const carriage_position_span = document.getElementById("carriage_position");
+const carriage_position_arrow = document.getElementById("carriage_position_arrow");
 
 const websockets_url = "ws://" + window.location.host + "/ws/status";
 const websocket = new WebSocket(websockets_url);
@@ -17,9 +23,11 @@ websocket.onerror = wsevent_onerror;
 
 function wsevent_onmessage(event) {
 	const msg = JSON.parse(event.data);
-	console.log(msg);
 	skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
 	carriage_position_span.innerHTML = msg["carriage_position"];
+
+	const pixel_pos = (msg["carriage_position"] * 4.95) + 5;
+	carriage_position_arrow.style.left = pixel_pos + "px";
 }
 
 function wsevent_onerror(event) {
