@@ -26,7 +26,7 @@ function wsevent_onmessage(event) {
 	skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
 	carriage_position_span.innerHTML = msg["carriage_position"];
 
-	const pixel_pos = (msg["carriage_position"] * 4.95) + 5;
+	const pixel_pos = (msg["carriage_position"] * 4.95);
 	carriage_position_arrow.style.left = pixel_pos + "px";
 }
 

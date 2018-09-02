@@ -58,6 +58,7 @@ struct server_state_t {
 	bool direction_left_to_right;
 	int32_t carriage_position;
 	int32_t pattern_row;
+	struct pattern_t *pattern;
 };
 static struct server_state_t server_state;
 
@@ -174,6 +175,17 @@ static void* client_handler(void *vf) {
 			json_print_int(f, "skipped_needles_cnt", sled_get_skipped_needles_cnt());
 			json_print_bool(f, "pattern_row", server_state.pattern_row);
 			fprintf(f, "\"msg_type\": \"status\"}\n");
+		} else if (!strcmp(line, "getpattern")) {
+			int length = 32;
+			uint8_t foo[length];
+
+
+			fprintf(f, "{");
+			json_print_int(f, "length_bytes", length);
+			fprintf(f, "\"msg_type\": \"pattern\"}\n");
+			if (fwrite(foo, length, 1, f) != 1) {
+				fprintf(stderr, "Short write of binary data.\n");
+			}
 		} else {
 			if (pgm_opts.verbosity >= 1) {
 				fprintf(stderr, "Client sent unknown command.\n");

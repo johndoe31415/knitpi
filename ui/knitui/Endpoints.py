@@ -29,6 +29,10 @@ ctrlr = Controller()
 def index():
 	return ctrlr.index(flask.request)
 
+@app.route("/rest/pattern", methods = [ "GET" ])
+def rest_pattern_get():
+	return ctrlr.rest_pattern_get(flask.request)
+
 @app.route("/debug")
 def debug():
 	return ctrlr.debug(flask.request)

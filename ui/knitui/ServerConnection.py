@@ -39,15 +39,23 @@ class ServerConnection(object):
 			self._conn_file = self._conn.makefile(mode = "wrb")
 
 	def _tx_rx(self, command):
-		self._conn_file.write(b"status\n")
+		self._conn_file.write(command.encode("ascii") + b"\n")
 		self._conn_file.flush()
 		response = self._conn_file.readline()
 		return response
 
-	def get_status(self):
+	def _get_json(self, command):
 		try:
 			self._connect()
-			return self._tx_rx("status")
+			return self._tx_rx(command)
 		except (BrokenPipeError, FileNotFoundError, ConnectionRefusedError, OSError) as e:
-			print(e)
+			print("Exception: %s" % (str(e)))
 			return None
+
+	def get_status(self):
+		return self._get_json("status")
+
+	def get_pattern(self):
+		pattern_info = self._get_json("getpattern")
+		print(pattern_info)
+
