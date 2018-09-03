@@ -27,15 +27,19 @@ ctrlr = Controller()
 
 @app.route("/")
 def index():
-	return ctrlr.index(flask.request)
+	return ctrlr.serve_page(flask.request, "index")
+
+@app.route("/page/<name>")
+def show_page(name):
+	return ctrlr.serve_page(flask.request, name)
 
 @app.route("/rest/pattern", methods = [ "GET" ])
 def rest_pattern_get():
 	return ctrlr.rest_pattern_get(flask.request)
 
-@app.route("/debug")
-def debug():
-	return ctrlr.debug(flask.request)
+@app.route("/rest/pattern", methods = [ "POST" ])
+def rest_pattern_post():
+	return ctrlr.rest_pattern_post(flask.request)
 
 @websocket.route("/ws/status")
 def ws_status(ws):

@@ -441,20 +441,16 @@ static int run_test_write_png_mem(int argc, char **argv) {
 	const char *png_filename = argv[3];
 	struct pattern_t *pattern = pnmfile_read(pnm_filename);
 	if (pattern) {
-		struct membuf_t membuf;
+		struct membuf_t membuf = MEMBUF_INITIALIZER;
 		if (png_write_pattern_mem(pattern, &membuf, NULL)) {
-			FILE *f = fopen(png_filename, "w");
-			if (f) {
-				if (fwrite(membuf.data, membuf.length, 1, f) != 1) {
-					perror("Short write.");
-				}
-				fclose(f);
+			if (!membuf_write_to_file(&membuf, png_filename)) {
+				fprintf(stderr, "Error writing membuf to %s.\n", png_filename);
 			}
-			free(membuf.data);
 		} else {
 			fprintf(stderr, "Memory write of PNG failed.\n");
 		}
 		pattern_free(pattern);
+		membuf_free(&membuf);
 	} else {
 		fprintf(stderr, "Could not read %s.\n", pnm_filename);
 	}

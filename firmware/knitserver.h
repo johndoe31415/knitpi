@@ -24,6 +24,8 @@
 #ifndef __KNITSERVER_H__
 #define __KNITSERVER_H__
 
+#define MAX_PNG_RECV_SIZE		(128 * 1024)
+
 enum server_mode_t {
 	MODE_OFFLINE,
 	MODE_ONLINE,

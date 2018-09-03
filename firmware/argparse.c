@@ -5,7 +5,7 @@
  *
  *   Do not edit it by hand, your changes will be overwritten.
  *
- *   Generated at: 2018-09-02 17:18:05
+ *   Generated at: 2018-09-03 21:56:19
  */
 
 #include <stdint.h>
@@ -19,15 +19,17 @@
 enum argparse_option_internal_t {
 	ARG_FORCE_SHORT = 'f',
 	ARG_VERBOSE_SHORT = 'v',
-	ARG_FORCE_LONG = 1000,
-	ARG_NO_HARDWARE_LONG = 1001,
-	ARG_VERBOSE_LONG = 1002,
-	ARG_UNIX_SOCKET_LONG = 1003,
+	ARG_QUIT_LONG = 1000,
+	ARG_FORCE_LONG = 1001,
+	ARG_NO_HARDWARE_LONG = 1002,
+	ARG_VERBOSE_LONG = 1003,
+	ARG_UNIX_SOCKET_LONG = 1004,
 };
 
 bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback) {
 	const char *short_options = "fv";
 	struct option long_options[] = {
+		{ "quit",                             no_argument, 0, ARG_QUIT_LONG },
 		{ "force",                            no_argument, 0, ARG_FORCE_LONG },
 		{ "no-hardware",                      no_argument, 0, ARG_NO_HARDWARE_LONG },
 		{ "verbose",                          no_argument, 0, ARG_VERBOSE_LONG },
@@ -42,6 +44,12 @@ bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback
 		}
 		enum argparse_option_internal_t arg = (enum argparse_option_internal_t)optval;
 		switch (arg) {
+			case ARG_QUIT_LONG:
+				if (!argument_callback(ARG_QUIT, optarg)) {
+					return false;
+				}
+				break;
+
 			case ARG_FORCE_SHORT:
 			case ARG_FORCE_LONG:
 				if (!argument_callback(ARG_FORCE, optarg)) {
@@ -86,7 +94,7 @@ bool argparse_parse(int argc, char **argv, argparse_callback_t argument_callback
 }
 
 void argparse_show_syntax(void) {
-	fprintf(stderr, "usage: knitserver [-f] [--no-hardware] [-v] socket\n");
+	fprintf(stderr, "usage: knitserver [--quit] [-f] [--no-hardware] [-v] socket\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Brother KH-930 knitting server\n");
 	fprintf(stderr, "\n");
@@ -94,6 +102,7 @@ void argparse_show_syntax(void) {
 	fprintf(stderr, "  socket         UNIX socket that the KnitPi knitting server listens on.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "optional arguments:\n");
+	fprintf(stderr, "  --quit         Quit after handling a single connection.\n");
 	fprintf(stderr, "  -f, --force    Erase the socket if it already exists.\n");
 	fprintf(stderr, "  --no-hardware  Do not initialize actual hardware. Used for debugging\n");
 	fprintf(stderr, "                 purposes only.\n");
@@ -113,6 +122,7 @@ void argparse_parse_or_die(int argc, char **argv, argparse_callback_t argument_c
 
 static const char *option_enum_to_str(enum argparse_option_t option) {
 	switch (option) {
+		case ARG_QUIT: return "ARG_QUIT";
 		case ARG_FORCE: return "ARG_FORCE";
 		case ARG_NO_HARDWARE: return "ARG_NO_HARDWARE";
 		case ARG_VERBOSE: return "ARG_VERBOSE";

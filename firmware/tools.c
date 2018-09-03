@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <string.h>
+#include <signal.h>
 #include "tools.h"
 
 bool start_detached_thread(thread_function_t thread_fnc, void *argument) {
@@ -103,4 +104,11 @@ void timespec_min(struct timespec *result, const struct timespec *a, const struc
 			memcpy(result, b, sizeof(struct timespec));
 		}
 	}
+}
+
+bool ignore_signal(int signum) {
+	struct sigaction action = {
+		.sa_handler = SIG_IGN,
+	};
+	return (sigaction(signum, &action, NULL) == 0);
 }

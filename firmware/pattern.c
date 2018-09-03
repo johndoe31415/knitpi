@@ -29,8 +29,14 @@
 #include <errno.h>
 #include <string.h>
 #include "pattern.h"
+#include "logging.h"
 
 struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
+	if ((width > MAX_PATTERN_WIDTH) || (height > MAX_PATTERN_HEIGHT)) {
+		logmsg(LLVL_WARN, "Refusing to create %u x %u size pattern, maximum size is %u x %u.\n", width, height, MAX_PATTERN_WIDTH, MAX_PATTERN_HEIGHT);
+		return NULL;
+	}
+
 	struct pattern_t *pattern = calloc(1, sizeof(struct pattern_t));
 	if (!pattern) {
 		perror("calloc pattern");
@@ -39,7 +45,7 @@ struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
 
 	pattern->width = width;
 	pattern->height = height;
-	pattern->pixel_data = malloc(pattern->width * pattern->height);
+	pattern->pixel_data = calloc(1, pattern->width * pattern->height);
 	if (!pattern->pixel_data) {
 		fprintf(stderr, "Failed to allocate %d bytes for %d x %d pixel pattern: %s\n", pattern->width * pattern->height, pattern->width, pattern->height, strerror(errno));
 		pattern_free(pattern);
@@ -48,6 +54,24 @@ struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
 
 	return pattern;
 }
+
+static void pattern_set_index(struct pattern_t *pattern, unsigned int x, unsigned int y, uint8_t color_index) {
+	pattern->pixel_data[(pattern->width * y) + x] = color_index;
+}
+
+void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y, uint32_t rgba) {
+	uint8_t alpha = (rgba >> 24) & 0xff;
+	uint32_t rgb = (rgba >> 0) & 0xffffff;
+	uint8_t color_index;
+	if ((rgb == 0xffffff) || (alpha < 0)) {
+		/* Completely white or completely transparent */
+		color_index = 0;
+	} else {
+		color_index = 1;
+	}
+	pattern_set_index(pattern, x, y, color_index);
+}
+
 
 uint8_t* pattern_row_rw(const struct pattern_t *pattern, unsigned int y) {
 	return pattern->pixel_data + (pattern->width * y);
@@ -72,6 +96,8 @@ void pattern_dump(const struct pattern_t *pattern) {
 }
 
 void pattern_free(struct pattern_t *pattern) {
-	free(pattern->pixel_data);
-	free(pattern);
+	if (pattern) {
+		free(pattern->pixel_data);
+		free(pattern);
+	}
 }

@@ -21,23 +21,44 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#include <stdio.h>
+#include <stdarg.h>
+#include <time.h>
+#include "logging.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+static enum loglvl_t configured_loglvl = LLVL_FATAL;
 
-typedef void* (*thread_function_t)(void *arg);
+static const char *loglvl_text[] = {
+	[LLVL_FATAL] = "FATAL",
+	[LLVL_ERROR] = "ERROR",
+	[LLVL_WARN] = "WARN",
+	[LLVL_INFO] = "INFO",
+	[LLVL_DEBUG] = "DEBUG",
+	[LLVL_TRACE] = "TRACE",
+};
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool start_detached_thread(thread_function_t thread_fnc, void *argument);
-void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-void get_timespec_now(struct timespec *timespec);
-void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-int64_t timespec_diff(const struct timespec *a, const struct timespec *b);
-bool timespec_lt(const struct timespec *a, const struct timespec *b);
-void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
-bool ignore_signal(int signum);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
+static void get_datetime(char datetime[32]) {
+	time_t timet = time(NULL);
+	struct tm tm;
+	localtime_r(&timet, &tm),
+	strftime(datetime, 32, "%Y-%m-%d %H:%M:%S", &tm);
+}
 
-#endif
+void set_loglevel(enum loglvl_t new_loglevel) {
+	configured_loglvl = new_loglevel;
+}
+
+void logmsg(enum loglvl_t msg_loglvl, const char *msg, ...) {
+	if (msg_loglvl > configured_loglvl) {
+		return;
+	}
+	char datetime[16];
+	get_datetime(datetime);
+	fprintf(stderr, "%s [%s]: ", datetime, loglvl_text[msg_loglvl]);
+
+	va_list ap;
+	va_start(ap, msg);
+	vfprintf(stderr, msg, ap);
+	va_end(ap);
+	fprintf(stderr, "\n");
+}

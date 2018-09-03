@@ -21,23 +21,28 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#ifndef __MEMBUF_H__
+#define __MEMBUF_H__
 
-#include <stdbool.h>
 #include <stdint.h>
 
-typedef void* (*thread_function_t)(void *arg);
+#define MEMBUF_INITIALIZER		 { 0 }
+
+struct membuf_t {
+	uint8_t *data;
+	unsigned int length;
+	unsigned int position;
+};
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool start_detached_thread(thread_function_t thread_fnc, void *argument);
-void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-void get_timespec_now(struct timespec *timespec);
-void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-int64_t timespec_diff(const struct timespec *a, const struct timespec *b);
-bool timespec_lt(const struct timespec *a, const struct timespec *b);
-void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
-bool ignore_signal(int signum);
+void membuf_init(struct membuf_t *membuf);
+bool membuf_resize(struct membuf_t *membuf, unsigned int length);
+bool membuf_append(struct membuf_t *membuf, const uint8_t *data, unsigned int length);
+bool membuf_read(struct membuf_t *membuf, uint8_t *data, unsigned int length);
+bool membuf_seek(struct membuf_t *membuf, unsigned int offset);
+void membuf_rewind(struct membuf_t *membuf);
+bool membuf_write_to_file(const struct membuf_t *membuf, const char *filename);
+void membuf_free(struct membuf_t *membuf);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

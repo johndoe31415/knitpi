@@ -1,0 +1,36 @@
+<%inherit file="base.html"/>
+<%block name="title">Pattern</%block>
+
+<img src="/rest/pattern" />
+
+<h2>Load Pattern</h2>
+<form class="pure-form pure-form-aligned" method="post" action="/rest/pattern" enctype="multipart/form-data">
+	<fieldset>
+		<div class="pure-control-group">
+			<label for="pattern">Input file:</label>
+			<input type="file" name="pattern">
+		</div>
+
+		<div class="pure-control-group">
+			<label for="xoffset">X offset:</label>
+	        <input type="text" id="xoffset" name="xoffset" value="0">
+		</div>
+		
+		<div class="pure-control-group">
+			<label for="yoffset">Y offset:</label>
+	        <input type="text" id="yoffset" name="yoffset" value="0">
+		</div>
+	
+		<div class="pure-control-group">
+			<input type="submit" class="pure-button" name="set_pattern" value="Set pattern">
+			<input type="submit" class="pure-button" name="merge_pattern" value="Merge pattern">
+		</div>
+	</fieldset>
+</form>
+
+<h2>Edit Pattern</h2>
+<form class="pure-form pure-form-stacked" method="post" action="/rest/pattern">
+	<input type="submit" class="pure-button" name="center_pattern" value="Center pattern">
+	<input type="submit" class="pure-button" name="trim_pattern" value="Trim pattern">
+	<input type="submit" class="pure-button" name="remove_pattern" value="Remove pattern">
+</form>

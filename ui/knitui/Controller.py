@@ -33,18 +33,15 @@ class Controller(object):
 		}
 		self._template_lookup = mako.lookup.TemplateLookup([ "knitui/templates" ], input_encoding = "utf-8", strict_undefined = True)
 
-	def _serve(self, template_name, args = None):
+	def serve_page(self, request, template_name, args = None):
 		if args is None:
 			args = { }
-		template = self._template_lookup.get_template(template_name)
+		try:
+			template = self._template_lookup.get_template(template_name + ".html")
+		except mako.exceptions.TopLevelLookupException:
+			return flask.Response("Template '%s' not found.\n" % (template_name), status = 404, mimetype = "text/plain")
 		result = template.render(**args)
 		return result
-
-	def debug(self, request):
-		return self._serve("debug.html")
-
-	def index(self, request):
-		return self._serve("index.html")
 
 	def rest_pattern_get(self, request):
 		server_connection = ServerConnection(self._config["server_socket"])
@@ -53,6 +50,40 @@ class Controller(object):
 			return flask.Response(pattern, mimetype = "image/png")
 		else:
 			return flask.Response("No pattern loaded.\n", status = 404, mimetype = "text/plain")
+
+	def _msg(self, msgtype, msg):
+		print(msgtype, msg)
+
+	def rest_pattern_post(self, request):
+		msg = None
+		if ("set_pattern" in request.form) or ("merge_pattern" in request.form):
+			if "pattern" not in request.files:
+				self._msg("error", "No file provided.")
+			try:
+				(x, y) = (int(request.form["xoffset"]), int(request.form["yoffset"]))
+			except ValueError:
+				self._msg("error", "Could not read X or Y offset")
+
+			pattern_file = request.files["pattern"]
+			if pattern_file.mimetype not in [ "image/png" ]:
+				self._msg("error", "Unsupported file type uploaded: %s" % (pattern_file.mimetype))
+			else:
+				file_data = pattern_file.stream.read()
+				server_connection = ServerConnection(self._config["server_socket"])
+				server_connection.set_pattern(file_data)
+				if server_connection.last_error is not None:
+					self._msg("error", "Could not send pattern to knitserver.")
+
+			asjdio
+		elif "center_pattern" in request.form:
+			pass
+		elif "trim_pattern" in request.form:
+			pass
+		elif "remove_pattern" in request.form:
+			pass
+		else:
+			self._msg("error", "Unknown request sent to rest_pattern_post.")
+		return flask.redirect("/page/pattern")
 
 	def ws_status(self, ws):
 		server_connection = ServerConnection(self._config["server_socket"])

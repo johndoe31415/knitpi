@@ -43,38 +43,52 @@ class ServerConnection(object):
 			self._conn = conn
 			self._conn_file = self._conn.makefile(mode = "wrb")
 
-	def _tx_rx(self, command):
+	def _tx(self, command):
+		print("->", command)
 		self._conn_file.write(command.encode("ascii") + b"\n")
-		self._conn_file.flush()
+
+	def _rx(self):
 		response = self._conn_file.readline()
 		return response
 
-	def _get_json(self, command, parse = False):
+	def _execute(self, command, read_bindata = False, write_bindata = None, parse = False):
+		if read_bindata:
+			header = self._execute(command, parse = True)
+			if header is None:
+				return b""
+			bindata = self._conn_file.read(header["length_bytes"])
+			return bindata
+
 		try:
 			self._connect()
-			response = self._tx_rx(command)
+			if write_bindata is None:
+				self._tx(command)
+			else:
+				self._tx(command + " %d" % (len(write_bindata)))
+				self._conn_file.write(write_bindata)
+			self._conn_file.flush()
+			response = self._rx()
 			self._error = None
 		except (BrokenPipeError, FileNotFoundError, ConnectionRefusedError, OSError) as e:
 			self._conn = None
 			self._error = e
 			response = None
-		if parse and (response is not None):
+		if parse and (response is not None) and (not read_bindata):
 			response = json.loads(response)
 		return response
 
-	def get_status(self):
-		return self._get_json("status")
+	def get_status(self, parse = False):
+		return self._execute("status", parse = parse)
 
 	def get_pattern(self):
-		pattern_info = self._get_json("getpattern", parse = True)
-		if pattern_info is not None:
-			png_data = self._conn_file.read(pattern_info["length_bytes"])
-			return png_data
-		else:
-			return b""
+		return self._execute("getpattern", read_bindata = True)
+
+	def set_pattern(self, xoffset, yoffset, png_data, parse = False):
+		return self._execute("setpattern %d %d" % (xoffset, yoffset), write_bindata = png_data, parse = parse)
 
 if __name__ == "__main__":
 	sconn = ServerConnection("../firmware/foo")
+	sconn.set_pattern(10, 20, b"foobar")
 	while True:
 		print(sconn.get_status())
 		print(sconn.get_pattern().hex())

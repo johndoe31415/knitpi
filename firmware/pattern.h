@@ -24,6 +24,9 @@
 #ifndef __PATTERN_H__
 #define __PATTERN_H__
 
+#define MAX_PATTERN_WIDTH	400
+#define MAX_PATTERN_HEIGHT	1000
+
 struct pattern_t {
 	unsigned int width, height;
 	uint8_t *pixel_data;
@@ -31,6 +34,7 @@ struct pattern_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 struct pattern_t* pattern_new(unsigned int width, unsigned int height);
+void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y, uint32_t rgba);
 uint8_t* pattern_row_rw(const struct pattern_t *pattern, unsigned int y);
 const uint8_t* pattern_row(const struct pattern_t *pattern, unsigned int y);
 void pattern_dump_row(const struct pattern_t *pattern, unsigned int y);

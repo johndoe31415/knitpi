@@ -82,14 +82,8 @@ static void write_memory_callback(png_structp png_ptr, uint8_t *new_data, unsign
 	if (!ctx->custom.mem.success) {
 		return;
 	}
-	uint8_t *realloced = realloc(ctx->custom.mem.membuf->data, ctx->custom.mem.membuf->length + length);
-	if (!realloced) {
-		/* Allocation failed */
+	if (!membuf_append(ctx->custom.mem.membuf, new_data, length)) {
 		ctx->custom.mem.success = false;
-	} else {
-		memcpy(realloced + ctx->custom.mem.membuf->length, new_data, length);
-		ctx->custom.mem.membuf->data = realloced;
-		ctx->custom.mem.membuf->length += length;
 	}
 }
 
@@ -196,7 +190,6 @@ bool png_write_pattern(const struct pattern_t *pattern, const char *filename, co
 }
 
 bool png_write_pattern_mem(const struct pattern_t *pattern, struct membuf_t *membuf, const struct png_write_options_t *options) {
-	memset(membuf, 0, sizeof(struct membuf_t));
 	struct png_write_ctx_t ctx = {
 		.init_io_callback = init_mem_io,
 		.custom.mem = {
@@ -207,10 +200,5 @@ bool png_write_pattern_mem(const struct pattern_t *pattern, struct membuf_t *mem
 
 	bool success = png_write_pattern_generic(pattern, &ctx, options);
 
-	if (!success || !ctx.custom.mem.success) {
-		free(membuf->data);
-		memset(membuf, 0, sizeof(struct membuf_t));
-		success = false;
-	}
-	return success;
+	return success && ctx.custom.mem.success;
 }

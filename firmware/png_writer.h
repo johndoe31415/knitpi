@@ -27,11 +27,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "pattern.h"
-
-struct membuf_t {
-	uint8_t *data;
-	unsigned int length;
-};
+#include "membuf.h"
 
 struct png_write_options_t {
 	unsigned int pixel_width, pixel_height;

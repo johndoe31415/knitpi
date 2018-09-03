@@ -21,23 +21,21 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#ifndef __LOGGING_H__
+#define __LOGGING_H__
 
-#include <stdbool.h>
-#include <stdint.h>
-
-typedef void* (*thread_function_t)(void *arg);
+enum loglvl_t {
+	LLVL_FATAL,
+	LLVL_ERROR,
+	LLVL_WARN,
+	LLVL_INFO,
+	LLVL_DEBUG,
+	LLVL_TRACE,
+};
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool start_detached_thread(thread_function_t thread_fnc, void *argument);
-void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-void get_timespec_now(struct timespec *timespec);
-void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-int64_t timespec_diff(const struct timespec *a, const struct timespec *b);
-bool timespec_lt(const struct timespec *a, const struct timespec *b);
-void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
-bool ignore_signal(int signum);
+void set_loglevel(enum loglvl_t new_loglevel);
+void logmsg(enum loglvl_t msg_loglvl, const char *msg, ...);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

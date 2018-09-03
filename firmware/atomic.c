@@ -21,23 +21,28 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __TOOLS_H__
-#define __TOOLS_H__
+#include <pthread.h>
+#include "atomic.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+void atomic_inc_value(struct atomic_ctr_t *atomic, int value) {
+	pthread_mutex_lock(&atomic->mutex);
+	atomic->ctr += value;
+	pthread_mutex_unlock(&atomic->mutex);
+	pthread_cond_broadcast(&atomic->cond);
+}
 
-typedef void* (*thread_function_t)(void *arg);
+void atomic_inc(struct atomic_ctr_t *atomic) {
+	atomic_inc_value(atomic, 1);
+}
 
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-bool start_detached_thread(thread_function_t thread_fnc, void *argument);
-void add_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-void get_timespec_now(struct timespec *timespec);
-void get_abs_timespec_offset(struct timespec *timespec, int32_t offset_milliseconds);
-int64_t timespec_diff(const struct timespec *a, const struct timespec *b);
-bool timespec_lt(const struct timespec *a, const struct timespec *b);
-void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
-bool ignore_signal(int signum);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
+void atomic_dec(struct atomic_ctr_t *atomic) {
+	atomic_inc_value(atomic, -1);
+}
 
-#endif
+void atomic_wait(struct atomic_ctr_t *atomic, int target) {
+	pthread_mutex_lock(&atomic->mutex);
+	while (atomic->ctr != target) {
+		pthread_cond_wait(&atomic->cond, &atomic->mutex);
+	}
+	pthread_mutex_unlock(&atomic->mutex);
+}

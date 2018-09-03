@@ -21,6 +21,8 @@ const skipped_needles_cnt_span = document.getElementById("skipped_needles_cnt");
 const carriage_position_span = document.getElementById("carriage_position");
 const carriage_position_arrow = document.getElementById("carriage_position_arrow");
 
+const row_sound = (localStorage.getItem("setting_row_sound") != 0) ? new Audio("/static/sound/ding.mp3") : null;
+
 const websockets_url = "ws://" + window.location.host + "/ws/status";
 const websocket = new WebSocket(websockets_url);
 websocket.onmessage = wsevent_onmessage;
@@ -37,6 +39,9 @@ function wsevent_onmessage(event) {
 
 		const pixel_pos = (msg["carriage_position"] * 4.95);
 		carriage_position_arrow.style.left = pixel_pos + "px";
+		if (row_sound != null) {
+			row_sound.play();
+		}
 	} else {
 		console.log("Unknown message type: ", msg)
 	}
@@ -45,4 +50,5 @@ function wsevent_onmessage(event) {
 function wsevent_onerror(event) {
 	console.log("Websocket error: " + event);
 }
+
 </script>

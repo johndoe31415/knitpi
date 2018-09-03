@@ -1,0 +1,43 @@
+<%inherit file="base.html"/>
+<%block name="title">Settings</%block>
+
+<div>
+	<label for="row_sound" class="pure-checkbox">
+		<input type="checkbox" class="persist" id="row_sound" defaultvalue="1" onclick="save_element(this)" /> Play sound after each row
+	</label>
+</div>
+
+<script language="JavaScript">
+function save_element(element) {
+	const key = "setting_" + element.id;
+	if (element.type == "checkbox") {
+		const value = element.checked + 0;
+		localStorage.setItem(key, value);	
+	} else {
+		console.log("Undefined element type: " + element.type);
+	}
+}
+
+function load_element(element) {
+	const key = "setting_" + element.id;
+	let value = localStorage.getItem(key);
+	const was_unknown = (value === null);
+	if (was_unknown) {
+		value = element.getAttribute("defaultvalue");
+	}
+	if (element.type == "checkbox") {
+		element.checked = (value != 0);
+	} else {
+		console.log("Undefined element type: " + element.type);
+	}
+	if (was_unknown) {
+		save_element(element);
+	}
+}
+
+function load_all() {
+	document.querySelectorAll(".persist").forEach(load_element);
+}
+
+load_all();
+</script>
