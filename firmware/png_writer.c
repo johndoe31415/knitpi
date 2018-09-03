@@ -42,9 +42,27 @@ static const uint32_t lookup_colors[] = {
 };
 #define PALETTE_SIZE 		(sizeof(lookup_colors) / sizeof(uint32_t))
 
+struct png_write_file_ctx_t {
+	FILE *f;
+};
+
+struct png_write_mem_ctx_t {
+	bool success;
+	struct membuf_t *membuf;
+};
+
+struct png_write_ctx_t {
+	bool (*init_io_callback)(struct png_write_ctx_t *ctx, png_structp png_ptr);
+	union {
+		struct png_write_file_ctx_t file;
+		struct png_write_mem_ctx_t mem;
+	} custom;
+};
+
+
 static const struct png_write_options_t default_write_options = {
-	.pixel_width = 3,
-	.pixel_height = 3,
+	.pixel_width = 4,
+	.pixel_height = 4,
 	.grid_width = 1,
 	.grid_color = 0xaaaaaaaa,
 };
@@ -53,21 +71,44 @@ static uint32_t lookup_color(uint8_t color_index) {
 	return lookup_colors[color_index % PALETTE_SIZE];
 }
 
-bool png_write_pattern(const struct pattern_t *pattern, const char *filename, const struct png_write_options_t *options) {
+static bool init_file_io(struct png_write_ctx_t *ctx, png_structp png_ptr) {
+	png_init_io(png_ptr, ctx->custom.file.f);
+	return true;
+}
+
+static void write_memory_callback(png_structp png_ptr, uint8_t *new_data, unsigned long length) {
+	void *vctx = png_get_io_ptr(png_ptr);
+	struct png_write_ctx_t *ctx = (struct png_write_ctx_t*)vctx;
+	if (!ctx->custom.mem.success) {
+		return;
+	}
+	uint8_t *realloced = realloc(ctx->custom.mem.membuf->data, ctx->custom.mem.membuf->length + length);
+	if (!realloced) {
+		/* Allocation failed */
+		ctx->custom.mem.success = false;
+	} else {
+		memcpy(realloced + ctx->custom.mem.membuf->length, new_data, length);
+		ctx->custom.mem.membuf->data = realloced;
+		ctx->custom.mem.membuf->length += length;
+	}
+}
+
+static void flush_memory_callback(png_structp png_ptr) {
+}
+
+static bool init_mem_io(struct png_write_ctx_t *ctx, png_structp png_ptr) {
+	png_set_write_fn(png_ptr, ctx, write_memory_callback, flush_memory_callback);
+	return true;
+}
+
+static bool png_write_pattern_generic(const struct pattern_t *pattern, struct png_write_ctx_t *ctx, const struct png_write_options_t *options) {
 	if (options == NULL) {
 		options = &default_write_options;
-	}
-
-	FILE *f = fopen(filename, "w");
-	if (!f) {
-		perror(filename);
-		return false;
 	}
 
 	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if (!png_ptr) {
 		perror("png_create_write_struct");
-		fclose(f);
 		return false;
 	}
 
@@ -75,11 +116,15 @@ bool png_write_pattern(const struct pattern_t *pattern, const char *filename, co
 	if (info_ptr == NULL) {
 		perror("png_create_info_struct");
 		png_destroy_write_struct(&png_ptr, NULL);
-		fclose(f);
 		return false;
 	}
 
-	png_init_io(png_ptr, f);
+	if (!ctx->init_io_callback(ctx, png_ptr)) {
+		perror("Failed to initialize I/O");
+		png_destroy_info_struct(png_ptr, &info_ptr);
+		png_destroy_write_struct(&png_ptr, NULL);
+		return false;
+	}
 
 	int width = (pattern->width * options->pixel_width) + ((pattern->width - 1) * options->grid_width);
 	int height = (pattern->height * options->pixel_height) + ((pattern->height - 1) * options->grid_width);
@@ -130,5 +175,42 @@ bool png_write_pattern(const struct pattern_t *pattern, const char *filename, co
 	png_write_end(png_ptr, NULL);
 
 	png_destroy_write_struct(&png_ptr, NULL);
-	fclose(f);
+	return true;
+}
+
+bool png_write_pattern(const struct pattern_t *pattern, const char *filename, const struct png_write_options_t *options) {
+	struct png_write_ctx_t ctx = {
+		.init_io_callback = init_file_io,
+	};
+
+	ctx.custom.file.f = fopen(filename, "w");
+	if (!ctx.custom.file.f) {
+		perror(filename);
+		return false;
+	}
+
+	bool success = png_write_pattern_generic(pattern, &ctx, options);
+
+	fclose(ctx.custom.file.f);
+	return success;
+}
+
+bool png_write_pattern_mem(const struct pattern_t *pattern, struct membuf_t *membuf, const struct png_write_options_t *options) {
+	memset(membuf, 0, sizeof(struct membuf_t));
+	struct png_write_ctx_t ctx = {
+		.init_io_callback = init_mem_io,
+		.custom.mem = {
+			.membuf = membuf,
+			.success = true,
+		},
+	};
+
+	bool success = png_write_pattern_generic(pattern, &ctx, options);
+
+	if (!success || !ctx.custom.mem.success) {
+		free(membuf->data);
+		memset(membuf, 0, sizeof(struct membuf_t));
+		success = false;
+	}
+	return success;
 }

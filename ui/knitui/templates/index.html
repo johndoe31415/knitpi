@@ -2,6 +2,7 @@
 <%block name="title">Status</%block>
 					
 <p>
+Connection status: <span id="connection_status">-</span><br />
 Skipped needles: <span id="skipped_needles_cnt">-</span><br />
 Carriage position: <span id="carriage_position">-</span>
 </p>
@@ -10,8 +11,12 @@ Carriage position: <span id="carriage_position">-</span>
 	<img src="/static/img/needles.png" /><br />
 	<img src="/static/img/arrow.png" id="carriage_position_arrow" style="position: relative; left: 0px; top: -10px" />
 </div>
+<div id="no_pattern_loaded">
+	<img src="/rest/pattern" />
+</div>
 
 <script language="JavaScript">
+const html_connection_status = document.getElementById("connection_status");
 const skipped_needles_cnt_span = document.getElementById("skipped_needles_cnt");
 const carriage_position_span = document.getElementById("carriage_position");
 const carriage_position_arrow = document.getElementById("carriage_position_arrow");
@@ -23,11 +28,18 @@ websocket.onerror = wsevent_onerror;
 
 function wsevent_onmessage(event) {
 	const msg = JSON.parse(event.data);
-	skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
-	carriage_position_span.innerHTML = msg["carriage_position"];
+	if (msg["msg_type"] == "connection_error") {
+		html_connection_status.innerHTML = "Error: " + msg["text"];
+	} else if (msg["msg_type"] == "status") {
+		html_connection_status.innerHTML = "Connected";
+		skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
+		carriage_position_span.innerHTML = msg["carriage_position"];
 
-	const pixel_pos = (msg["carriage_position"] * 4.95);
-	carriage_position_arrow.style.left = pixel_pos + "px";
+		const pixel_pos = (msg["carriage_position"] * 4.95);
+		carriage_position_arrow.style.left = pixel_pos + "px";
+	} else {
+		console.log("Unknown message type: ", msg)
+	}
 }
 
 function wsevent_onerror(event) {

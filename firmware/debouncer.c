@@ -115,6 +115,7 @@ static void* debouncer_thread(void *vcallback) {
 		}
 		isleep_abs(&sleeper, &sleep_until);
 	}
+	return NULL;
 }
 
 bool start_debouncer_thread(gpio_irq_callback_t debouncer_output_callback) {

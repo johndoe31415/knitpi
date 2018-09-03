@@ -40,6 +40,7 @@
 #include "sled.h"
 #include "needles.h"
 #include "pnm_reader.h"
+#include "png_writer.h"
 #include "argparse.h"
 #include "json.h"
 
@@ -176,15 +177,22 @@ static void* client_handler(void *vf) {
 			json_print_bool(f, "pattern_row", server_state.pattern_row);
 			fprintf(f, "\"msg_type\": \"status\"}\n");
 		} else if (!strcmp(line, "getpattern")) {
-			int length = 32;
-			uint8_t foo[length];
+			server_state.pattern = pnmfile_read("../pattern/iloveknitpi_080.pnm");		// DEBUG ONLY MEMLEAK
 
+			struct membuf_t png_file;
+			bool success = png_write_pattern_mem(server_state.pattern, &png_file, NULL);
+			if (!success) {
+				png_file.length = 0;
+			}
 
 			fprintf(f, "{");
-			json_print_int(f, "length_bytes", length);
+			json_print_int(f, "length_bytes", png_file.length);
 			fprintf(f, "\"msg_type\": \"pattern\"}\n");
-			if (fwrite(foo, length, 1, f) != 1) {
+			if (fwrite(png_file.data, png_file.length, 1, f) != 1) {
 				fprintf(stderr, "Short write of binary data.\n");
+			}
+			if (success) {
+				free(png_file.data);
 			}
 		} else {
 			if (pgm_opts.verbosity >= 1) {

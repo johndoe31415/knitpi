@@ -70,8 +70,6 @@ void sled_set_callback(sled_callback_t callback) {
 }
 
 void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
-	bool execute_callback = false;
-
 	switch (gpio) {
 		case GPIO_BROTHER_LEFT_HALL:
 			if (!value) {
@@ -93,12 +91,7 @@ void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 
 		case GPIO_BROTHER_V1:
 		case GPIO_BROTHER_V2:
-			{
-				int sled_before = rotary_get_position();
-				rotary_encoder_movement();
-				int sled_after = rotary_get_position();
-				execute_callback = pos_valid && (sled_before != sled_after);
-			}
+			rotary_encoder_movement();
 			break;
 
 		default: break;

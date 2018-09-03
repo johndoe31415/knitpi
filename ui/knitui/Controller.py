@@ -22,6 +22,7 @@
 import time
 import random
 import json
+import flask
 import mako.lookup
 from knitui.ServerConnection import ServerConnection
 
@@ -31,7 +32,6 @@ class Controller(object):
 			"server_socket":		"../firmware/foo",
 		}
 		self._template_lookup = mako.lookup.TemplateLookup([ "knitui/templates" ], input_encoding = "utf-8", strict_undefined = True)
-		self._server_connection = ServerConnection(self._config["server_socket"])
 
 	def _serve(self, template_name, args = None):
 		if args is None:
@@ -44,16 +44,28 @@ class Controller(object):
 		return self._serve("debug.html")
 
 	def index(self, request):
-		args = { }
-		args["status"] = self._server_connection.get_status()
-		return self._serve("index.html", args)
+		return self._serve("index.html")
+
+	def rest_pattern_get(self, request):
+		server_connection = ServerConnection(self._config["server_socket"])
+		pattern = server_connection.get_pattern()
+		if len(pattern) > 0:
+			return flask.Response(pattern, mimetype = "image/png")
+		else:
+			return flask.Response("No pattern loaded.\n", status = 404, mimetype = "text/plain")
 
 	def ws_status(self, ws):
+		server_connection = ServerConnection(self._config["server_socket"])
 		while True:
-			status_json = self._server_connection.get_status()
+			status_json = server_connection.get_status()
 			if status_json is not None:
 				ws.send(status_json)
 			else:
+				msg = {
+					"msg_type":		"connection_error",
+					"text":			str(server_connection.last_error),
+				}
+				ws.send(json.dumps(msg))
 				time.sleep(1)
 			time.sleep(0.25)
 

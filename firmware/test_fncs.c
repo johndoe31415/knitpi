@@ -58,6 +58,7 @@ static int run_test_sled_actuate(int argc, char **argv);
 static int run_test_needle_name(int argc, char **argv);
 static int run_test_read_pnm(int argc, char **argv);
 static int run_test_write_png(int argc, char **argv);
+static int run_test_write_png_mem(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
 static int knit_needle_id = 104;
@@ -132,6 +133,11 @@ static struct test_mode_t test_modes[] = {
 		.mode_name = "write-png",
 		.description = "Write PNG file",
 		.run_test = run_test_write_png,
+	},
+	{
+		.mode_name = "write-png-mem",
+		.description = "Write PNG file using membuf",
+		.run_test = run_test_write_png_mem,
 	},
 };
 
@@ -260,6 +266,7 @@ static int run_test_interruptible_sleep(int argc, char **argv) {
 		int64_t nanodiff = timespec_diff(&after, &before);
 		fprintf(stderr, "Slept %s: %" PRIu64 " ms\n", interrupted ? "INTERRUPTED" : "normally", nanodiff / 1000000);
 	}
+	return 0;
 }
 
 static int run_test_abstime(int argc, char **argv) {
@@ -320,6 +327,7 @@ static int run_test_debounce(int argc, char **argv) {
 	debouncer_input(2, &now, true);
 
 	usleep(100 * 1000);
+	return 0;
 }
 
 static void sled_callback(int position, bool belt_phase, bool left_to_right) {
@@ -335,6 +343,7 @@ static int run_test_sled(int argc, char **argv) {
 	while (true) {
 		sleep(1);
 	}
+	return 0;
 }
 
 static void sled_actuation_callback(int position, bool belt_phase, bool left_to_right) {
@@ -369,6 +378,7 @@ static int run_test_sled_actuate(int argc, char **argv) {
 		}
 		knit_needle_id++;
 	}
+	return 0;
 }
 
 static int run_test_needle_name(int argc, char **argv) {
@@ -402,6 +412,7 @@ static int run_test_read_pnm(int argc, char **argv) {
 	} else {
 		fprintf(stderr, "Could not read %s.\n", filename);
 	}
+	return 0;
 }
 
 static int run_test_write_png(int argc, char **argv) {
@@ -418,6 +429,36 @@ static int run_test_write_png(int argc, char **argv) {
 	} else {
 		fprintf(stderr, "Could not read %s.\n", pnm_filename);
 	}
+	return 0;
+}
+
+static int run_test_write_png_mem(int argc, char **argv) {
+	if (argc != 4) {
+		fprintf(stderr, "argument: [pnmfile] [pngfile]\n");
+		exit(EXIT_FAILURE);
+	}
+	const char *pnm_filename = argv[2];
+	const char *png_filename = argv[3];
+	struct pattern_t *pattern = pnmfile_read(pnm_filename);
+	if (pattern) {
+		struct membuf_t membuf;
+		if (png_write_pattern_mem(pattern, &membuf, NULL)) {
+			FILE *f = fopen(png_filename, "w");
+			if (f) {
+				if (fwrite(membuf.data, membuf.length, 1, f) != 1) {
+					perror("Short write.");
+				}
+				fclose(f);
+			}
+			free(membuf.data);
+		} else {
+			fprintf(stderr, "Memory write of PNG failed.\n");
+		}
+		pattern_free(pattern);
+	} else {
+		fprintf(stderr, "Could not read %s.\n", pnm_filename);
+	}
+	return 0;
 }
 
 static void show_syntax(const char *errmsg) {

@@ -28,6 +28,11 @@
 #include <stdint.h>
 #include "pattern.h"
 
+struct membuf_t {
+	uint8_t *data;
+	unsigned int length;
+};
+
 struct png_write_options_t {
 	unsigned int pixel_width, pixel_height;
 	unsigned int grid_width;
@@ -36,6 +41,7 @@ struct png_write_options_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool png_write_pattern(const struct pattern_t *pattern, const char *filename, const struct png_write_options_t *options);
+bool png_write_pattern_mem(const struct pattern_t *pattern, struct membuf_t *membuf, const struct png_write_options_t *options);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

@@ -19,17 +19,22 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
+import time
 import enum
 import socket
 import struct
 import collections
-import queue
-
+import json
 
 class ServerConnection(object):
 	def __init__(self, socket_filename):
 		self._socket_filename = socket_filename
 		self._conn = None
+		self._error = None
+
+	@property
+	def last_error(self):
+		return self._error
 
 	def _connect(self):
 		if self._conn is None:
@@ -44,18 +49,34 @@ class ServerConnection(object):
 		response = self._conn_file.readline()
 		return response
 
-	def _get_json(self, command):
+	def _get_json(self, command, parse = False):
 		try:
 			self._connect()
-			return self._tx_rx(command)
+			response = self._tx_rx(command)
+			self._error = None
 		except (BrokenPipeError, FileNotFoundError, ConnectionRefusedError, OSError) as e:
-			print("Exception: %s" % (str(e)))
-			return None
+			self._conn = None
+			self._error = e
+			response = None
+		if parse and (response is not None):
+			response = json.loads(response)
+		return response
 
 	def get_status(self):
 		return self._get_json("status")
 
 	def get_pattern(self):
-		pattern_info = self._get_json("getpattern")
-		print(pattern_info)
+		pattern_info = self._get_json("getpattern", parse = True)
+		if pattern_info is not None:
+			png_data = self._conn_file.read(pattern_info["length_bytes"])
+			return png_data
+		else:
+			return b""
 
+if __name__ == "__main__":
+	sconn = ServerConnection("../firmware/foo")
+	while True:
+		print(sconn.get_status())
+		print(sconn.get_pattern().hex())
+		print(sconn.last_error)
+		time.sleep(1)
