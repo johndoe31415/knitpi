@@ -57,3 +57,18 @@ void json_print_dict(FILE *f, const struct json_dict_entry_t *entries) {
 	}
 	fprintf(f, " }\n");
 }
+
+void json_respond_simple(FILE *f, const char *msg_type, const char *message, ...) {
+	char message_buffer[256];
+	va_list ap;
+	va_start(ap, message);
+	vsnprintf(message_buffer, sizeof(message_buffer), message, ap);
+	va_end(ap);
+
+	struct json_dict_entry_t json_dict[] = {
+		JSON_DICTENTRY_STR("msg_type", msg_type),
+		JSON_DICTENTRY_STR("message", message_buffer),
+		{ 0 },
+	};
+	json_print_dict(f, json_dict);
+}

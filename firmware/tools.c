@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
 #include <signal.h>
@@ -135,4 +136,15 @@ int trim_crlf(char *string) {
 		string[--len] = 0;
 	}
 	return len;
+}
+
+bool safe_atoi(const char *string, int *result) {
+	char *endptr = NULL;
+	long long_value = strtol(string, &endptr, 10);
+	int int_value = long_value;
+	if ((endptr != string) && (*endptr == 0) && (long_value == int_value)) {
+		*result = int_value;
+		return true;
+	}
+	return false;
 }

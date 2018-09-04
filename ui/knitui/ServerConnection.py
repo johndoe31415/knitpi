@@ -26,6 +26,8 @@ import struct
 import collections
 import json
 
+class FileReceptionFailedException(Exception): pass
+
 class ServerConnection(object):
 	def __init__(self, socket_filename):
 		self._socket_filename = socket_filename
@@ -54,9 +56,9 @@ class ServerConnection(object):
 	def _execute(self, command, read_bindata = False, write_bindata = None, parse = False):
 		if read_bindata:
 			header = self._execute(command, parse = True)
-			if header is None:
-				return b""
-			bindata = self._conn_file.read(header["length_bytes"])
+			if (header is None) or (header["msg_type"] != "bindata"):
+				raise FileReceptionFailedException("Header invalid for binary file reception.", header)
+			bindata = self._conn_file.read(header["bindata_length"])
 			return bindata
 
 		try:
@@ -80,17 +82,13 @@ class ServerConnection(object):
 	def get_status(self, parse = False):
 		return self._execute("status", parse = parse)
 
-	def get_pattern(self):
-		return self._execute("getpattern", read_bindata = True)
+	def get_pattern(self, rawdata = False):
+		assert(isinstance(rawdata, bool))
+		try:
+			return self._execute("getpattern %s" % (str(rawdata)), read_bindata = True)
+		except FileReceptionFailedException:
+			return None
 
-	def set_pattern(self, xoffset, yoffset, png_data, parse = False):
-		return self._execute("setpattern %d %d" % (xoffset, yoffset), write_bindata = png_data, parse = parse)
-
-if __name__ == "__main__":
-	sconn = ServerConnection("../firmware/foo")
-	sconn.set_pattern(10, 20, b"foobar")
-	while True:
-		print(sconn.get_status())
-		print(sconn.get_pattern().hex())
-		print(sconn.last_error)
-		time.sleep(1)
+	def set_pattern(self, xoffset, yoffset, merge, png_data, parse = False):
+		assert(isinstance(merge, bool))
+		return self._execute("setpattern %d %d %s" % (xoffset, yoffset, str(merge)), write_bindata = png_data, parse = parse)

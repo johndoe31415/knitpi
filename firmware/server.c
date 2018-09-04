@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <strings.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <linux/un.h>
@@ -43,6 +45,8 @@
 #include "tools.h"
 #include "pgmopts.h"
 #include "tokenizer.h"
+#include "png_reader.h"
+#include "png_writer.h"
 
 #define MAX_CMD_ARG_COUNT		8
 
@@ -52,6 +56,12 @@ enum execution_state_t {
 	FATAL_ERROR,		/* Non-recoverable, disconnect. */
 };
 
+enum cmdtype_t {
+	PLAIN_COMMAND = 0,
+	RECV_BINDATA_COMMAND = 1,
+	SEND_BINDATA_COMMAND = 2,
+};
+
 struct client_thread_data_t {
 	FILE *f;
 	unsigned int client_id;
@@ -59,7 +69,7 @@ struct client_thread_data_t {
 };
 
 typedef bool (*argument_parser_fnc)(union token_t *token);
-typedef enum execution_state_t (*handler_fnc)(struct client_thread_data_t *worker, struct tokens_t* tokens);
+typedef enum execution_state_t (*handler_fnc)(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 
 struct argument_t {
 	const char *name;
@@ -71,15 +81,33 @@ struct command_t {
 	unsigned int arg_count;
 	handler_fnc handler;
 	struct argument_t arguments[MAX_CMD_ARG_COUNT];
+	enum cmdtype_t cmd_type;
 };
 
 static bool argument_parse_int(union token_t *token) {
-
-	return true;
+	int result;
+	if (safe_atoi(token->string, &result)) {
+		token->integer = result;
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens);
-static enum execution_state_t handler_setfoo(struct client_thread_data_t *worker, struct tokens_t* tokens);
+static bool argument_parse_bool(union token_t *token) {
+	if ((!strcasecmp(token->string, "1")) || (!strcasecmp(token->string, "on")) || (!strcasecmp(token->string, "true")) || (!strcasecmp(token->string, "yes"))) {
+		token->boolean = true;
+		return true;
+	} else if ((!strcasecmp(token->string, "0")) || (!strcasecmp(token->string, "off")) || (!strcasecmp(token->string, "false")) || (!strcasecmp(token->string, "no"))) {
+		token->boolean = false;
+		return true;
+	}
+	return false;
+}
+
+static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 
 static struct command_t known_commands[] = {
 	{
@@ -87,14 +115,25 @@ static struct command_t known_commands[] = {
 		.handler = handler_status,
 	},
 	{
-		.cmdname = "setfoo",
-		.arg_count = 3,
+		.cmdname = "setpattern",
+		.handler = handler_setpattern,
+		.cmd_type = RECV_BINDATA_COMMAND,
+		.arg_count = 4,
 		.arguments = {
-			{ .name = "arg1" },
-			{ .name = "arg2" },
-			{ .name = "intarg3", .parser = argument_parse_int },
+			{ .name = "offsetx/int", .parser = argument_parse_int },
+			{ .name = "offsety/int", .parser = argument_parse_int },
+			{ .name = "merge/bool", .parser = argument_parse_bool },
+			{ .name = "bindata_length/int", .parser = argument_parse_int },
 		},
-		.handler = handler_setfoo,
+	},
+	{
+		.cmdname = "getpattern",
+		.handler = handler_getpattern,
+		.cmd_type = SEND_BINDATA_COMMAND,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "rawdata/bool", .parser = argument_parse_bool },
+		},
 	},
 };
 #define KNOWN_COMMAND_COUNT		(sizeof(known_commands) / sizeof(struct command_t))
@@ -107,7 +146,7 @@ static const char *server_mode_to_str(enum server_mode_t mode) {
 	return "Unknown";
 }
 
-static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens) {
+static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	struct json_dict_entry_t json_dict[] = {
 		JSON_DICTENTRY_STR("msg_type", "status"),
 		JSON_DICTENTRY_STR("server_mode", server_mode_to_str(worker->server_state->server_mode)),
@@ -123,23 +162,37 @@ static enum execution_state_t handler_status(struct client_thread_data_t *worker
 	return SUCCESS;
 }
 
-static enum execution_state_t handler_setfoo(struct client_thread_data_t *worker, struct tokens_t* tokens) {
+static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	/* TODO implement offsets */
+//	int offsetx = tokens->token[1].integer;
+//	int offsety = tokens->token[2].integer;
+	bool merge = tokens->token[3].boolean;
+	struct pattern_t *pattern = png_read_pattern(membuf);
+	if (!pattern) {
+		return FAILED;
+	} else {
+		if (!merge) {
+			pattern_free(worker->server_state->pattern);
+			worker->server_state->pattern = pattern;
+		} else {
+			// TODO implement
+		}
+	}
+	json_respond_simple(worker->f, "ok", "New pattern set.");
 	return SUCCESS;
 }
 
-static void json_respond_simple(FILE *f, const char *msg_type, const char *message, ...) {
-	char message_buffer[256];
-	va_list ap;
-	va_start(ap, message);
-	vsnprintf(message_buffer, sizeof(message_buffer), message, ap);
-	va_end(ap);
-
-	struct json_dict_entry_t json_dict[] = {
-		JSON_DICTENTRY_STR("msg_type", msg_type),
-		JSON_DICTENTRY_STR("message", message_buffer),
-		{ 0 },
-	};
-	json_print_dict(f, json_dict);
+static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	bool rawdata = tokens->token[1].boolean;
+	if (!worker->server_state->pattern) {
+		json_respond_simple(worker->f, "error", "No pattern is set.");
+		return FAILED;
+	}
+	if (!png_write_pattern_mem(worker->server_state->pattern, membuf, rawdata ? NULL : NULL)) {	// TODO implement raw pattern
+		json_respond_simple(worker->f, "error", "Unable to convert pattern to PNG.");
+		return FAILED;
+	}
+	return SUCCESS;
 }
 
 static enum execution_state_t parse_execute_command(struct client_thread_data_t *worker, char *line) {
@@ -177,7 +230,6 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 						bool parse_result = command->arguments[i].parser(&tokens->token[i + 1]);
 						if (!parse_result) {
 							logmsg(LLVL_WARN, "(%d) Could not parse client's argument %s for command %s: %s", worker->client_id, command->arguments[i].name, command_name, tokens->token[i + 1].string);
-							logmsg(LLVL_WARN, "(%d) Could not parse client's argument %s for command %s: %s", worker->client_id, command->arguments[i].name, command_name, tokens->token[i + 1].string);
 							json_respond_simple(worker->f, "error", "Could not parse argument %s of command %s.", command->arguments[i].name, command_name);
 							result = FAILED;
 							break;
@@ -186,11 +238,67 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 				}
 				if (result == SUCCESS) {
 					/* All arguments could be successfully parsed. Execute! */
-					result = command->handler(worker, tokens);
+					struct membuf_t membuf = MEMBUF_INITIALIZER;
+					if (command->cmd_type == RECV_BINDATA_COMMAND) {
+						/* The last argument must always be the amount of
+						 * binary data we read */
+						int bindata_length = tokens->token[command->arg_count].integer;
+						if ((bindata_length < 0) || (bindata_length > pgm_opts->max_bindata_recv_bytes)) {
+							logmsg(LLVL_ERROR, "(%d) Tried sending %d bytes of binary data, maximum of %d bytes allowed.", worker->client_id, bindata_length, pgm_opts->max_bindata_recv_bytes);
+							json_respond_simple(worker->f, "error", "Binary data length %d is invalid. Maximum of %d bytes is permissible.", bindata_length, pgm_opts->max_bindata_recv_bytes);
+							result = FATAL_ERROR;
+						} else {
+							/* Try to allocate data buffer */
+							if (membuf_resize(&membuf, bindata_length)) {
+								/* Then try reading from client */
+								logmsg(LLVL_TRACE, "(%d) Receiving %d bytes of binary data.", worker->client_id, bindata_length);
+								if (fread(membuf.data, bindata_length, 1, worker->f) != 1) {
+									logmsg(LLVL_WARN, "(%d) Short read while receiving %d bytes of binary data.", worker->client_id, bindata_length);
+									json_respond_simple(worker->f, "error", "Short read while receiving binary data.");
+									result = FATAL_ERROR;
+								}
+							} else {
+								logmsg(LLVL_WARN, "(%d) Failed to allocate %d bytes of binary data membuf: %s", worker->client_id, bindata_length, strerror(errno));
+								json_respond_simple(worker->f, "error", "Failed ot allocate binary data buffer for reception of data.");
+								result = FATAL_ERROR;
+							}
+						}
+					}
+					if (result == SUCCESS) {
+						/* Only execute if the binary read was successful */
+						result = command->handler(worker, tokens, &membuf);
+					}
+					if ((command->cmd_type == SEND_BINDATA_COMMAND) && (result == SUCCESS)) {
+						/* We first send the JSON header, then the binary data */
+						struct json_dict_entry_t json_dict[] = {
+							JSON_DICTENTRY_STR("msg_type", "bindata"),
+							JSON_DICTENTRY_INT("bindata_length", membuf.length),
+							{ 0 },
+						};
+						json_print_dict(worker->f, json_dict);
+
+						/* Then send the binary data */
+						if (fwrite(membuf.data, membuf.length, 1, worker->f) != 1) {
+							logmsg(LLVL_ERROR, "(%d) Short write when trying to send %d bytes to client.", worker->client_id, membuf.length);
+							json_respond_simple(worker->f, "error", "Short write when trying to send %d bytes to you.", membuf.length);
+							result = FATAL_ERROR;
+						}
+					}
+					membuf_free(&membuf);
 				}
 			} else {
-				logmsg(LLVL_WARN, "(%d) Client issued wrong argument count for command: %s, supplied %d, required %d", worker->client_id, command_name, tokens->token_cnt - 1, command->arg_count);
-				json_respond_simple(worker->f, "error", "The %s command requires %d arguments, you provided %d.", command_name, command->arg_count, tokens->token_cnt - 1);
+				char usage[256];
+				char *buf = usage;
+				*buf = 0;
+				int bufsize = sizeof(usage);
+				for (int i = 0; i < command->arg_count; i++) {
+					int charcnt;
+					charcnt = snprintf(buf, bufsize, " [%s]", command->arguments[i].name);
+					buf += charcnt;
+					bufsize -= charcnt;
+				}
+				logmsg(LLVL_WARN, "(%d) Client issued wrong argument count for command: %s, supplied %d, required %d. Usage: %s%s", worker->client_id, command_name, tokens->token_cnt - 1, command->arg_count, command_name, usage);
+				json_respond_simple(worker->f, "error", "The %s command requires %d arguments, you provided %d. Usage: %s%s", command_name, command->arg_count, tokens->token_cnt - 1, command_name, usage);
 				result = FAILED;
 			}
 		}
@@ -217,101 +325,6 @@ static void* client_handler(void *vclient_thread_data) {
 		}
 	}
 
-#if 0
-	FILE *f = (FILE*)vf;
-
-
-		char *saveptr;
-		char *token = strtok_r(line, " ", &saveptr);
-		if (token == NULL) {
-			logmsg(LLVL_ERROR, "Could not tokenize client command.");
-			json_respond_simple(f, "error", "Could not tokenize command.");
-		} else if (!strcmp(token, "status")) {
-			logmsg(LLVL_DEBUG, "<- %s", token);
-			fprintf(f, "{");
-			json_print_str(f, "server_mode", server_mode_to_str(server_state.server_mode));
-			json_print_bool(f, "carriage_position_valid", server_state.carriage_position_valid);
-			json_print_bool(f, "belt_phase", server_state.belt_phase);
-			json_print_bool(f, "direction_left_to_right", server_state.direction_left_to_right);
-			json_print_int(f, "carriage_position", server_state.carriage_position);
-			json_print_int(f, "skipped_needles_cnt", sled_get_skipped_needles_cnt());
-			json_print_int(f, "pattern_row", server_state.pattern_row);
-			fprintf(f, "\"msg_type\": \"status\"}\n");
-		} else if (!strcmp(token, "getpattern")) {
-			logmsg(LLVL_DEBUG, "<- %s", token);
-
-			struct membuf_t png_file = MEMBUF_INITIALIZER;
-			if (server_state.pattern) {
-				bool success = png_write_pattern_mem(server_state.pattern, &png_file, NULL);
-				if (!success) {
-					png_file.length = 0;
-				}
-			}
-
-			fprintf(f, "{");
-			json_print_int(f, "length_bytes", png_file.length);
-			fprintf(f, "\"msg_type\": \"pattern\"}\n");
-			if (png_file.length) {
-				if (fwrite(png_file.data, png_file.length, 1, f) != 1) {
-					logmsg(LLVL_ERROR, "Short write of binary data when sending pattern.");
-				}
-			}
-			membuf_free(&png_file);
-		} else if (!strcmp(token, "setpattern")) {
-			logmsg(LLVL_DEBUG, "<- %s", token);
-			int xoffset = 0, yoffset = 0, binlength = 0;
-			token = strtok_r(NULL, " ", &saveptr);
-			if (token) {
-				xoffset = atoi(token);
-			}
-			token = strtok_r(NULL, " ", &saveptr);
-			if (token) {
-				yoffset = atoi(token);
-			}
-			token = strtok_r(NULL, " ", &saveptr);
-			if (token) {
-				binlength = atoi(token);
-				if (binlength <= MAX_PNG_RECV_SIZE) {
-					struct membuf_t png_data = MEMBUF_INITIALIZER;
-					if (!membuf_resize(&png_data, binlength)) {
-						logmsg(LLVL_FATAL, "Could not resize membuf to %d bytes: %s", binlength, strerror(errno));
-
-					} else {
-						if (fread(png_data.data, binlength, 1, f) != 1) {
-							logmsg(LLVL_ERROR, "Short read of binary data when receiving pattern of %d bytes.", binlength);
-							json_respond_simple(f, "error", "Short read of binary data when receiving pattern.");
-							membuf_free(&png_data);
-							break;
-						} else {
-							logmsg(LLVL_DEBUG, "Setting pattern at %d, %d PNG length %d bytes.", xoffset, yoffset, binlength);
-							struct pattern_t* new_pattern = png_read_pattern(&png_data);
-							if (new_pattern) {
-								pattern_free(server_state.pattern);
-								server_state.pattern = new_pattern;
-								json_respond_simple(f, "success", "Input pattern read.");
-							} else {
-								json_respond_simple(f, "error", "Failed to decode PNG file.");
-							}
-						}
-					}
-					membuf_free(&png_data);
-				} else {
-					logmsg(LLVL_WARN, "Discarding %d bytes of input, too large for PNG buffer.", binlength);
-					discard_data(f, binlength);
-					json_respond_simple(f, "error", "Input file too large");
-				}
-			} else {
-				json_respond_simple(f, "error", "Not enough parameters supplied for command, expected: [xoffset] [yoffset] [bindata_length].");
-			}
-		} else {
-			logmsg(LLVL_WARN, "Client sent unknown command: %s", token);
-			fprintf(f, "{");
-			json_printf_str(f, "error_msg", "Request (length %d bytes) not understood.", len);
-			fprintf(f, "\"msg_type\": \"error\"}\n");
-		}
-	}
-	fclose(f);
-#endif
 	fclose(worker->f);
 	logmsg(LLVL_DEBUG, "(%d) Client disconnected.", worker->client_id);
 	struct atomic_ctr_t *thread_cnt = &worker->server_state->thread_count;

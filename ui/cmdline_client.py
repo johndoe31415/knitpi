@@ -48,14 +48,16 @@ elif args.command == "cont-status":
 		time.sleep(1)
 elif args.command == "getpattern":
 	data = conn.get_pattern()
-	print("Received %d bytes." % (len(data)))
-	if len(data) > 0:
+	if data is not None:
+		print("Received %d bytes." % (len(data)))
 		with open(args.file, "wb") as f:
 			f.write(data)
+	else:
+		print("Error receving data.")
 elif args.command == "setpattern":
 	with open(args.file, "rb") as f:
 		data = f.read()
-	result = conn.set_pattern(args.xoffset, args.yoffset, data)
+	result = conn.set_pattern(xoffset = args.xoffset, yoffset = args.yoffset, merge = False, png_data = data)
 	print(result)
 else:
 	raise NotImplementedError(args.command)

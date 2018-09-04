@@ -33,6 +33,7 @@ struct pgmopts_t {
 	bool no_hardware;
 	enum loglvl_t loglevel;
 	const char *unix_socket;
+	int max_bindata_recv_bytes;
 };
 
 extern const struct pgmopts_t *pgm_opts;

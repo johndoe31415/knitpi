@@ -40,6 +40,7 @@ void timespec_min(struct timespec *result, const struct timespec *a, const struc
 bool ignore_signal(int signum);
 bool file_discard_data(FILE *f, unsigned int discard_bytes);
 int trim_crlf(char *string);
+bool safe_atoi(const char *string, int *result);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

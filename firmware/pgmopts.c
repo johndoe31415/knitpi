@@ -27,6 +27,7 @@
 
 static struct pgmopts_t pgm_opts_rw = {
 	.loglevel = LLVL_ERROR,
+	.max_bindata_recv_bytes = 256 * 1024,
 };
 const struct pgmopts_t *pgm_opts = &pgm_opts_rw;
 
