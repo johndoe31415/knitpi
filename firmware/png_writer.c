@@ -32,13 +32,11 @@
 #include "pattern.h"
 #include "png_writer.h"
 
-#define RGB(r, g, b)		(0xff000000 | ((b) << 16) | ((g) << 8) | ((r) << 0))
-
 static const uint32_t lookup_colors[] = {
-	RGB(0x27, 0xae, 0x60),
-	RGB(0x34, 0x98, 0xdb),
-	RGB(0xe6, 0x7e, 0x22),
-	RGB(0xc0, 0x39, 0x2b),
+	MK_RGB(0x27, 0xae, 0x60),
+	MK_RGB(0x34, 0x98, 0xdb),
+	MK_RGB(0xe6, 0x7e, 0x22),
+	MK_RGB(0xc0, 0x39, 0x2b),
 };
 #define PALETTE_SIZE 		(sizeof(lookup_colors) / sizeof(uint32_t))
 
@@ -68,7 +66,12 @@ static const struct png_write_options_t default_write_options = {
 };
 
 static uint32_t lookup_color(uint8_t color_index) {
-	return lookup_colors[color_index % PALETTE_SIZE];
+	if (color_index == 0) {
+		/* Fully transparent */
+		return PIXEL_FULLY_TRANSPARENT;
+	} else {
+		return lookup_colors[(color_index - 1) % PALETTE_SIZE];
+	}
 }
 
 static bool init_file_io(struct png_write_ctx_t *ctx, png_structp png_ptr) {

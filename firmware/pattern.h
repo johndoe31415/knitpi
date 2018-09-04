@@ -27,9 +27,22 @@
 #define MAX_PATTERN_WIDTH	400
 #define MAX_PATTERN_HEIGHT	1000
 
+#define UINT8(x)						((x) & 0xff)
+#define MK_RGBA(r, g, b, a)				((UINT8(a) << 24) | (UINT8(b) << 16) | (UINT8(g) << 8) | (UINT8(r) << 0))
+#define MK_RGB(r, g, b)					MK_RGBA((r), (g), (b), 0xff)
+
+#define PIXEL_GET_RGB(pixel)			((pixel) & 0xffffff)
+#define PIXEL_GET_ALPHA(pixel)			UINT8((pixel) >> 24)
+
+#define PIXEL_FULLY_TRANSPARENT			MK_RGBA(0xff, 0xff, 0xff, 0)
+#define PIXEL_COLOR_IS_WHITE(pixel)		(PIXEL_GET_RGB(pixel) == 0xffffff)
+#define PIXEL_COLOR_IS_BLACK(pixel)		(PIXEL_GET_RGB(pixel) == 0)
+
 struct pattern_t {
 	unsigned int width, height;
 	uint8_t *pixel_data;
+	unsigned int used_colors;
+	uint32_t rgb_palette[255];
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/

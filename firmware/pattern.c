@@ -60,14 +60,31 @@ static void pattern_set_index(struct pattern_t *pattern, unsigned int x, unsigne
 }
 
 void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y, uint32_t rgba) {
-	uint8_t alpha = (rgba >> 24) & 0xff;
-	uint32_t rgb = (rgba >> 0) & 0xffffff;
 	uint8_t color_index;
-	if ((rgb == 0xffffff) || (alpha < 0)) {
+	if ((PIXEL_COLOR_IS_WHITE(rgba)) || (PIXEL_GET_ALPHA(rgba) == 0)) {
 		/* Completely white or completely transparent */
 		color_index = 0;
 	} else {
-		color_index = 1;
+		bool found = false;
+		uint32_t rgb = PIXEL_GET_RGB(rgba);
+		for (int i = 0; i < pattern->used_colors; i++) {
+			if (pattern->rgb_palette[i] == rgb) {
+				color_index = i + 1;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			/* Color not found in palette, add if possible */
+			if (pattern->used_colors < 255) {
+				pattern->used_colors++;
+				color_index = pattern->used_colors;
+				pattern->rgb_palette[pattern->used_colors - 1] = rgb;
+			} else {
+				logmsg(LLVL_WARN, "Cannot add more than 255 colors to pattern.");
+				color_index = 0;
+			}
+		}
 	}
 	pattern_set_index(pattern, x, y, color_index);
 }
