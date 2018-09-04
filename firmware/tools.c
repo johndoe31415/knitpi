@@ -112,3 +112,27 @@ bool ignore_signal(int signum) {
 	};
 	return (sigaction(signum, &action, NULL) == 0);
 }
+
+bool file_discard_data(FILE *f, unsigned int discard_bytes) {
+	while (discard_bytes) {
+		uint8_t buffer[16 * 1024];
+		unsigned int chunk_size = (discard_bytes > sizeof(buffer)) ? sizeof(buffer) : discard_bytes;
+		size_t discarded = fread(buffer, 1, chunk_size, f);
+		if (discarded <= 0) {
+			return false;
+		}
+		discard_bytes -= chunk_size;
+	}
+	return true;
+}
+
+int trim_crlf(char *string) {
+	int len = strlen(string);
+	if (len && (string[len - 1] == '\n')) {
+		string[--len] = 0;
+	}
+	if (len && (string[len - 1] == '\r')) {
+		string[--len] = 0;
+	}
+	return len;
+}

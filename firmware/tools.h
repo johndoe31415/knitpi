@@ -38,6 +38,8 @@ int64_t timespec_diff(const struct timespec *a, const struct timespec *b);
 bool timespec_lt(const struct timespec *a, const struct timespec *b);
 void timespec_min(struct timespec *result, const struct timespec *a, const struct timespec *b);
 bool ignore_signal(int signum);
+bool file_discard_data(FILE *f, unsigned int discard_bytes);
+int trim_crlf(char *string);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

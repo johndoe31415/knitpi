@@ -25,25 +25,35 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <assert.h>
 #include "json.h"
 
-void json_print_str(FILE *f, const char *key, const char *value) {
-	fprintf(f, "\"%s\": \"%s\", ", key, value);
-}
+void json_print_dict(FILE *f, const struct json_dict_entry_t *entries) {
+	assert(entries);
+	fprintf(f, "{ ");
+	bool first = true;
+	while (entries->key) {
+		if (!first) {
+			fprintf(f, ", ");
+		} else {
+			first = false;
+		}
+		fprintf(f, "\"%s\": ", entries->key);
+		switch (entries->value_type) {
+			case JSON_INT:
+				fprintf(f, "%d", entries->value.integer);
+				break;
 
-void json_print_bool(FILE *f, const char *key, bool value) {
-	fprintf(f, "\"%s\": %s, ", key, value ? "true" : "false");
-}
+			case JSON_STRING:
+				fprintf(f, "\"%s\"", entries->value.string);
+				break;
 
-void json_printf_str(FILE *f, const char *key, const char *msg, ...) {
-	va_list ap;
-	char buffer[1024];
-	va_start(ap, msg);
-	vsnprintf(buffer, sizeof(buffer), msg, ap);
-	va_end(ap);
-	json_print_str(f, key, buffer);
-}
+			case JSON_BOOL:
+				fprintf(f, "%s", entries->value.boolean ? "true" : "false");
+				break;
 
-void json_print_int(FILE *f, const char *key, int32_t value) {
-	fprintf(f, "\"%s\": %d, ", key, value);
+		}
+		entries++;
+	}
+	fprintf(f, " }\n");
 }

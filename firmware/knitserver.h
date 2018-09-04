@@ -24,11 +24,27 @@
 #ifndef __KNITSERVER_H__
 #define __KNITSERVER_H__
 
+#include <stdbool.h>
+#include <stdint.h>
+#include "pattern.h"
+#include "atomic.h"
+
 #define MAX_PNG_RECV_SIZE		(128 * 1024)
 
 enum server_mode_t {
 	MODE_OFFLINE,
 	MODE_ONLINE,
+};
+
+struct server_state_t {
+	enum server_mode_t server_mode;
+	bool carriage_position_valid;
+	bool belt_phase;
+	bool direction_left_to_right;
+	int32_t carriage_position;
+	int32_t pattern_row;
+	struct pattern_t *pattern;
+	struct atomic_ctr_t thread_count;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/

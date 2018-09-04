@@ -21,35 +21,35 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __JSON_H__
-#define __JSON_H__
-
 #include <stdio.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include "tokenizer.h"
 
-enum json_type_t {
-	JSON_INT,
-	JSON_STRING,
-	JSON_BOOL,
-};
+struct tokens_t* tok_create(const char *buffer) {
+	struct tokens_t *tokens = calloc(1, sizeof(struct tokens_t));
+	if (!tokens) {
+		return NULL;
+	}
+	tokens->mutable_copy = strdup(buffer);
+	if (!tokens->mutable_copy) {
+		free(tokens);
+		return NULL;
+	}
 
-struct json_dict_entry_t {
-	const char *key;
-	enum json_type_t value_type;
-	union {
-		int integer;
-		const char *string;
-		bool boolean;
-	} value;
-};
+	char *saveptr = NULL;
+	char *next_token = strtok_r(tokens->mutable_copy, " ", &saveptr);
+	while ((next_token) && (tokens->token_cnt < MAX_TOKEN_CNT)) {
+		tokens->token[tokens->token_cnt].string = next_token;
+		tokens->token_cnt++;
+		next_token = strtok_r(NULL, " ", &saveptr);
+	}
+	return tokens;
+}
 
-#define JSON_DICTENTRY_INT(_key, _value)		{ .key = (_key), .value_type = JSON_INT, .value.integer = (_value) }
-#define JSON_DICTENTRY_STR(_key, _value)		{ .key = (_key), .value_type = JSON_STRING, .value.string = (_value) }
-#define JSON_DICTENTRY_BOOL(_key, _value)		{ .key = (_key), .value_type = JSON_BOOL, .value.boolean = (_value) }
-
-/*************** AUTO GENERATED SECTION FOLLOWS ***************/
-void json_print_dict(FILE *f, const struct json_dict_entry_t *entries);
-/***************  AUTO GENERATED SECTION ENDS   ***************/
-
-#endif
+void tok_free(struct tokens_t *tokens) {
+	if (tokens) {
+		free(tokens->mutable_copy);
+		free(tokens);
+	}
+}
