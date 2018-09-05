@@ -28,7 +28,7 @@
 #include "membuf.h"
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
-struct pattern_t* png_read_pattern(struct membuf_t *membuf);
+struct pattern_t* png_read_pattern(struct membuf_t *membuf, unsigned int offsetx, unsigned int offsety);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

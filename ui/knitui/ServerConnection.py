@@ -101,8 +101,14 @@ class ServerConnection(object):
 		assert(isinstance(merge, bool))
 		return self._execute("setpattern %d %d %s" % (xoffset, yoffset, str(merge)), write_bindata = png_data, parse = parse)
 
+	def edit_pattern(self, edit_mode, parse = False):
+		return self._execute("editpattern %s" % (edit_mode), parse = parse)
+
 	def set_row(self, row_id, parse = False):
 		return self._execute("setrow %d" % (row_id), parse = parse)
+
+	def set_offset(self, offset, parse = False):
+		return self._execute("setoffset %d" % (offset), parse = parse)
 
 	def set_knitting_mode(self, knitting_mode, parse = False):
 		return self._execute("setknitmode %s" % (knitting_mode), parse = parse)

@@ -41,9 +41,18 @@ def rest_pattern_get():
 def rest_pattern_post():
 	return ctrlr.rest_pattern_post(flask.request)
 
+@app.route("/rest/edit_pattern/<edit_type>", methods = [ "POST" ])
+def rest_editpattern_post(edit_type):
+	return ctrlr.rest_edit_pattern(flask.request, edit_type)
+
 @app.route("/rest/pattern_row/<int:rowid>", methods = [ "POST" ])
 def rest_setrow_post(rowid):
 	return ctrlr.rest_setrow(flask.request, rowid)
+
+@app.route("/rest/pattern_offset/<new_offset>", methods = [ "POST" ])
+def rest_pattern_offset_post(new_offset):
+	new_offset = int(new_offset)
+	return ctrlr.rest_setpatternoffset(flask.request, new_offset)
 
 @app.route("/rest/set_knitting_mode/<knitting_mode>", methods = [ "POST" ])
 def rest_setknittingmode_post(knitting_mode):

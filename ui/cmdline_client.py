@@ -29,7 +29,7 @@ from FriendlyArgumentParser import FriendlyArgumentParser
 parser = FriendlyArgumentParser()
 parser.add_argument("--xoffset", metavar = "pixels", type = int, default = 0, help = "X offset in pixels. Defaults to %(default)s.")
 parser.add_argument("--yoffset", metavar = "pixels", type = int, default = 0, help = "X offset in pixels. Defaults to %(default)s.")
-parser.add_argument("-c", "--command", choices = [ "status", "cont-status", "getpattern", "setpattern" ], default = "status", help = "Command to execute. Can be one of %(choices)s, defaults to %(default)s.")
+parser.add_argument("-c", "--command", choices = [ "status", "cont-status", "getpattern", "setpattern", "clr", "center", "trim" ], default = "status", help = "Command to execute. Can be one of %(choices)s, defaults to %(default)s.")
 parser.add_argument("-f", "--file", metavar = "filename", default = "pattern.png", help = "For all operations that require an input/output file, this is the filename. Defaults to %(default)s.")
 parser.add_argument("socket", metavar = "file", type = str, help = "Socket to connect to.")
 args = parser.parse_args(sys.argv[1:])
@@ -58,6 +58,9 @@ elif args.command == "setpattern":
 	with open(args.file, "rb") as f:
 		data = f.read()
 	result = conn.set_pattern(xoffset = args.xoffset, yoffset = args.yoffset, merge = False, png_data = data)
+	print(result)
+elif args.command in [ "clr", "center", "trim" ]:
+	result = conn.edit_pattern(args.command, parse = True)
 	print(result)
 else:
 	raise NotImplementedError(args.command)

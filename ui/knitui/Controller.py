@@ -78,11 +78,11 @@ class Controller(object):
 					if server_connection.last_error is not None:
 						self._msg(request, "error", "Could not send pattern to knitserver.")
 		elif "center_pattern" in request.form:
-			pass
+			self.rest_editpattern(request, "center")
 		elif "trim_pattern" in request.form:
-			pass
-		elif "remove_pattern" in request.form:
-			pass
+			self.rest_editpattern(request, "trim")
+		elif "clr_pattern" in request.form:
+			self.rest_editpattern(request, "clr")
 		else:
 			self._msg(request, "error", "Unknown request sent to rest_pattern_post.")
 		return flask.redirect("/page/pattern")
@@ -99,11 +99,17 @@ class Controller(object):
 	def rest_setrow(self, request, rowid):
 		return self._single_server_action(lambda server_connection: server_connection.set_row(rowid))
 
+	def rest_setpatternoffset(self, request, new_offset):
+		return self._single_server_action(lambda server_connection: server_connection.set_offset(new_offset))
+
 	def rest_setknittingmode(self, request, knitting_mode):
 		return self._single_server_action(lambda server_connection: server_connection.set_knitting_mode(knitting_mode))
 
 	def rest_setrepeatmode(self, request, repeat_mode):
 		return self._single_server_action(lambda server_connection: server_connection.set_repeat_mode(repeat_mode))
+
+	def rest_editpattern(self, request, edit_type):
+		return self._single_server_action(lambda server_connection: server_connection.edit_pattern(edit_type))
 
 	def _isleep(self, max_sleeptime):
 		self._isleep_cond.clear()

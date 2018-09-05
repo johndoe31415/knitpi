@@ -49,6 +49,7 @@ struct server_state_t {
 	bool direction_left_to_right;
 	int32_t carriage_position;
 	int32_t pattern_row;
+	int32_t pattern_offset;
 	struct pattern_t *pattern;
 	struct atomic_ctr_t thread_count;
 };

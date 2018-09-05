@@ -51,7 +51,7 @@ static const char* png_color_type_to_str(uint8_t color_type) {
 	return "Unknown";
 }
 
-struct pattern_t* png_read_pattern(struct membuf_t *membuf) {
+struct pattern_t* png_read_pattern(struct membuf_t *membuf, unsigned int offsetx, unsigned int offsety) {
 	struct pattern_t *pattern = NULL;
 
 	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -76,7 +76,7 @@ struct pattern_t* png_read_pattern(struct membuf_t *membuf) {
 	uint8_t color_type = png_get_color_type(png_ptr, info_ptr);
 	logmsg(LLVL_DEBUG, "PNG decoded: %u x %u pixels", width, height);
 
-	pattern = pattern_new(width, height);
+	pattern = pattern_new(width + offsetx, height + offsety);
 	if (!pattern) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 		return NULL;
@@ -132,7 +132,7 @@ struct pattern_t* png_read_pattern(struct membuf_t *membuf) {
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			uint32_t pixel_rgba = row_pointers[y][x];
-			pattern_set_rgba(pattern, x, y, pixel_rgba);
+			pattern_set_rgba(pattern, x + offsetx, y + offsety, pixel_rgba);
 		}
 	}
 

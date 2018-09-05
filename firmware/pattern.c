@@ -46,6 +46,8 @@ struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
 	pattern->width = width;
 	pattern->height = height;
 	pattern->pixel_data = calloc(1, pattern->width * pattern->height);
+	pattern->min_x = width + 1;
+	pattern->min_y = height + 1;
 	if (!pattern->pixel_data) {
 		fprintf(stderr, "Failed to allocate %d bytes for %d x %d pixel pattern: %s\n", pattern->width * pattern->height, pattern->width, pattern->height, strerror(errno));
 		pattern_free(pattern);
@@ -55,7 +57,14 @@ struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
 	return pattern;
 }
 
-static void pattern_set_index(struct pattern_t *pattern, unsigned int x, unsigned int y, uint8_t color_index) {
+static uint8_t pattern_get_color(const struct pattern_t *pattern, unsigned int x, unsigned int y) {
+	if ((x >= pattern->width) || (y >= pattern->height)) {
+		return 0;
+	}
+	return pattern->pixel_data[(pattern->width * y) + x];
+}
+
+static void pattern_set_color(struct pattern_t *pattern, unsigned int x, unsigned int y, uint8_t color_index) {
 	pattern->pixel_data[(pattern->width * y) + x] = color_index;
 }
 
@@ -86,7 +95,7 @@ void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y,
 			}
 		}
 	}
-	pattern_set_index(pattern, x, y, color_index);
+	pattern_set_color(pattern, x, y, color_index);
 }
 
 
@@ -104,6 +113,68 @@ void pattern_dump_row(const struct pattern_t *pattern, unsigned int y) {
 		printf("%s", row[x] ? " " : "•");
 	}
 	printf("\n");
+}
+
+void pattern_update_min_max(struct pattern_t *pattern) {
+	/* Need to increment minimum values by 1 to get correct result even with
+	 * 0x0 sized pattern */
+	pattern->min_x = pattern->width + 1;
+	pattern->min_y = pattern->height + 1;
+	pattern->max_x = 0;
+	pattern->max_y = 0;
+	for (int y = 0; y < pattern->height; y++) {
+		for (int x = 0; x < pattern->width; x++) {
+			uint8_t color = pattern_get_color(pattern, x, y);
+			if (color) {
+				pattern->min_x = (x < pattern->min_x) ? x : pattern->min_x;
+				pattern->min_y = (y < pattern->min_y) ? y : pattern->min_y;
+				pattern->max_x = (x > pattern->max_x) ? x : pattern->max_x;
+				pattern->max_y = (y > pattern->max_y) ? y : pattern->max_y;
+			}
+		}
+	}
+}
+
+struct pattern_t* pattern_merge(const struct pattern_t *old_pattern, const struct pattern_t *new_pattern) {
+	struct pattern_t *merge = pattern_new((old_pattern->width > new_pattern->width) ? old_pattern->width : new_pattern->width, (old_pattern->height > new_pattern->height) ? old_pattern->height : new_pattern->height);
+	if (!merge) {
+		return NULL;
+	}
+	for (unsigned int y = 0; y < merge->height; y++) {
+		for (unsigned int x = 0; x < merge->width; x++) {
+			uint8_t pixel = pattern_get_color(new_pattern, x, y);
+			if (!pixel) {
+				pixel = pattern_get_color(old_pattern, x, y);
+			}
+			pattern_set_color(merge, x, y, pixel);
+		}
+	}
+
+	return merge;
+}
+
+struct pattern_t* pattern_trim(struct pattern_t *pattern) {
+	pattern_update_min_max(pattern);
+	if ((pattern->min_x > pattern->max_x) || (pattern->min_y > pattern->max_y)) {
+		/* Either width or height is zero. */
+		return pattern_new(0, 0);
+	}
+
+	struct pattern_t *trimmed = pattern_new(pattern->max_x - pattern->min_x + 1, pattern->max_y - pattern->min_y + 1);
+	if (!trimmed) {
+		return NULL;
+	}
+	for (unsigned int y = 0; y < trimmed->height; y++) {
+		for (unsigned int x = 0; x < trimmed->width; x++) {
+			uint8_t pixel = pattern_get_color(pattern, x + pattern->min_x, y + pattern->min_y);
+			pattern_set_color(trimmed, x, y, pixel);
+		}
+	}
+	trimmed->min_x = 0;
+	trimmed->min_y = 0;
+	trimmed->max_x = trimmed->width - 1;
+	trimmed->max_y = trimmed->height - 1;
+	return trimmed;
 }
 
 void pattern_dump(const struct pattern_t *pattern) {

@@ -43,6 +43,8 @@ struct pattern_t {
 	uint8_t *pixel_data;
 	unsigned int used_colors;
 	uint32_t rgb_palette[255];
+	unsigned int min_x, max_x;
+	unsigned int min_y, max_y;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
@@ -51,6 +53,9 @@ void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y,
 uint8_t* pattern_row_rw(const struct pattern_t *pattern, unsigned int y);
 const uint8_t* pattern_row(const struct pattern_t *pattern, unsigned int y);
 void pattern_dump_row(const struct pattern_t *pattern, unsigned int y);
+void pattern_update_min_max(struct pattern_t *pattern);
+struct pattern_t* pattern_merge(const struct pattern_t *old_pattern, const struct pattern_t *new_pattern);
+struct pattern_t* pattern_trim(struct pattern_t *pattern);
 void pattern_dump(const struct pattern_t *pattern);
 void pattern_free(struct pattern_t *pattern);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

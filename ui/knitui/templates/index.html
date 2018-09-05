@@ -21,7 +21,7 @@
 </div>
 <div class="show_with_pattern" style="display:none">
 	<div style="position: relative">
-		<img src="/rest/pattern" onerror="pattern_available(false)" onload="pattern_available(true)" />
+		<img src="/rest/pattern" onerror="pattern_available(false)" onload="pattern_available(true)" id="pattern" style="position: relative" />
 		<img src="/static/img/darkbar.png" id="active_row_bar" style="position: absolute; left: -10px; top : 5px">
 	</div>
 </div>
@@ -39,6 +39,7 @@ const no_pattern_loaded = document.getElementById("no_pattern_loaded");
 const active_row_bar = document.getElementById("active_row_bar");
 const play_button = document.getElementById("play_button");
 const repeat_button = document.getElementById("repeat_button");
+const pattern = document.getElementById("pattern");
 let last_status = null;
 
 const row_sound = (localStorage.getItem("setting_row_sound") != 0) ? new Audio("/static/sound/ding.mp3") : null;
@@ -77,6 +78,9 @@ function wsevent_onmessage(event) {
 
 		ypos = -10 + (msg["pattern_row"] * 5);
 		active_row_bar.style.top = ypos + "px";
+
+		const xshift = 5 * msg["pattern_offset"];
+		pattern.style.left = xshift + "px";
 
 		const pixel_pos = (msg["carriage_position"] * 4.95);
 		carriage_position_arrow.style.left = pixel_pos + "px";
@@ -140,9 +144,8 @@ function action_repeat_oneshot() {
 	}
 }
 
-function action_row_inc(value) {
-	if ((last_status != null) && (last_status["pattern_height"] > 0)) {
-		let pattern_row = last_status["pattern_row"] + value;
+function action_row_set(pattern_row) {
+	if (last_status != null) {
 		if (last_status["repeat_mode"] == "repeat") {
 			pattern_row = (pattern_row + last_status["pattern_height"]) % last_status["pattern_height"];
 		}
@@ -155,6 +158,23 @@ function action_row_inc(value) {
 			request.open("POST", "/rest/pattern_row/" + pattern_row, true);
 			request.send();
 		}
+	}
+}
+
+function action_row_inc(value) {
+	if ((last_status != null) && (last_status["pattern_height"] > 0)) {
+		const pattern_row = last_status["pattern_row"] + value;
+		action_row_set(pattern_row);
+	}
+}
+
+function action_offset_inc(value) {
+	if ((last_status != null) && (last_status["pattern_height"] > 0)) {
+		const new_offset = last_status["pattern_offset"] + value;
+
+		const request = new XMLHttpRequest();
+		request.open("POST", "/rest/pattern_offset/" + new_offset, true);
+		request.send();
 	}
 }
 
@@ -178,6 +198,28 @@ function connect_websocket(uri) {
 	return websocket;
 }
 
-websocket = connect_websocket(websocket_uri);
+function keypress(key) {
+	if (key.key == "ArrowUp") {
+		action_row_inc(-1);
+	} else if (key.key == "ArrowDown") {
+		action_row_inc(1);
+	} else if (key.key == "PageDown") {
+		action_row_inc(5);
+	} else if (key.key == "PageUp") {
+		action_row_inc(-5);
+	} else if (key.key == "Home") {
+		action_row_set(0);
+	} else if (key.key == "End") {
+		if (last_status != null) {
+			action_row_set(last_status["pattern_height"] - 1);
+		}
+	} else if (key.key == "ArrowLeft") {
+		action_offset_inc(-1);
+	} else if (key.key == "ArrowRight") {
+		action_offset_inc(1);
+	}
+}
 
+websocket = connect_websocket(websocket_uri);
+document.onkeydown = keypress;
 </script>

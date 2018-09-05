@@ -108,7 +108,9 @@ static bool argument_parse_bool(union token_t *token) {
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_editpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_setoffset(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 
@@ -139,11 +141,27 @@ static struct command_t known_commands[] = {
 		},
 	},
 	{
+		.cmdname = "editpattern",
+		.handler = handler_editpattern,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "[clr|trim|center]/str" },
+		},
+	},
+	{
 		.cmdname = "setrow",
 		.handler = handler_setrow,
 		.arg_count = 1,
 		.arguments = {
 			{ .name = "rowid/int", .parser = argument_parse_int },
+		},
+	},
+	{
+		.cmdname = "setoffset",
+		.handler = handler_setoffset,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "offset/int", .parser = argument_parse_int },
 		},
 	},
 	{
@@ -192,6 +210,11 @@ static enum execution_state_t handler_status(struct client_thread_data_t *worker
 		JSON_DICTENTRY_INT("carriage_position", worker->server_state->carriage_position),
 		JSON_DICTENTRY_INT("skipped_needles_cnt", sled_get_skipped_needles_cnt()),
 		JSON_DICTENTRY_INT("pattern_row", worker->server_state->pattern_row),
+		JSON_DICTENTRY_INT("pattern_offset", worker->server_state->pattern_offset),
+		JSON_DICTENTRY_INT("pattern_min_x", worker->server_state->pattern ? worker->server_state->pattern->min_x : 0),
+		JSON_DICTENTRY_INT("pattern_min_y", worker->server_state->pattern ? worker->server_state->pattern->min_y : 0),
+		JSON_DICTENTRY_INT("pattern_max_x", worker->server_state->pattern ? worker->server_state->pattern->max_x : -1),
+		JSON_DICTENTRY_INT("pattern_max_y", worker->server_state->pattern ? worker->server_state->pattern->max_y : -1),
 		JSON_DICTENTRY_INT("pattern_width", worker->server_state->pattern ? worker->server_state->pattern->width : 0),
 		JSON_DICTENTRY_INT("pattern_height", worker->server_state->pattern ? worker->server_state->pattern->height : 0),
 		{ 0 },
@@ -201,19 +224,32 @@ static enum execution_state_t handler_status(struct client_thread_data_t *worker
 }
 
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
-	/* TODO implement offsets */
-//	int offsetx = tokens->token[1].integer;
-//	int offsety = tokens->token[2].integer;
+	int offsetx = tokens->token[1].integer;
+	int offsety = tokens->token[2].integer;
 	bool merge = tokens->token[3].boolean;
-	struct pattern_t *pattern = png_read_pattern(membuf);
+	struct pattern_t *pattern = png_read_pattern(membuf, offsetx, offsety);
 	if (!pattern) {
+		logmsg(LLVL_ERROR, "(%d) Failed read PNG image from client.", worker->client_id);
+		json_respond_simple(worker->f, "error", "Could not read PNG image.");
 		return FAILED;
 	} else {
 		if (!merge) {
+			pattern_update_min_max(pattern);
 			pattern_free(worker->server_state->pattern);
 			worker->server_state->pattern = pattern;
 		} else {
-			// TODO implement
+			struct pattern_t *merge_pattern = pattern_merge(worker->server_state->pattern, pattern);
+			if (!merge_pattern) {
+				logmsg(LLVL_WARN, "(%d) Failed merge patterns.", worker->client_id);
+				json_respond_simple(worker->f, "error", "Could not merge patterns.");
+				pattern_free(pattern);
+				return FAILED;
+			}
+			pattern_update_min_max(merge_pattern);
+
+			pattern_free(pattern);
+			pattern_free(worker->server_state->pattern);
+			worker->server_state->pattern = merge_pattern;
 		}
 	}
 	json_respond_simple(worker->f, "ok", "New pattern set.");
@@ -233,6 +269,45 @@ static enum execution_state_t handler_getpattern(struct client_thread_data_t *wo
 	return SUCCESS;
 }
 
+static enum execution_state_t handler_editpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if (!strcasecmp(tokens->token[1].string, "clr")) {
+		pattern_free(worker->server_state->pattern);
+		worker->server_state->pattern = NULL;
+		worker->server_state->pattern_offset = 0;
+	} else if (!strcasecmp(tokens->token[1].string, "trim")) {
+		if (!worker->server_state->pattern) {
+			json_respond_simple(worker->f, "error", "Cannot trim without pattern.");
+			return FAILED;
+		}
+		logmsg(LLVL_DEBUG, "(%d) Trimming %d x %d pattern, old minmax (%d, %d), (%d, %d)", worker->client_id, worker->server_state->pattern->width, worker->server_state->pattern->height, worker->server_state->pattern->min_x, worker->server_state->pattern->min_y, worker->server_state->pattern->max_x, worker->server_state->pattern->max_y);
+		struct pattern_t *trimmed = pattern_trim(worker->server_state->pattern);
+		if (!trimmed) {
+			json_respond_simple(worker->f, "error", "Trimming of pattern failed.");
+			return FAILED;
+		}
+		pattern_free(worker->server_state->pattern);
+		worker->server_state->pattern = trimmed;
+		logmsg(LLVL_DEBUG, "(%d) Trimmed %d x %d pattern, new minmax (%d, %d), (%d, %d)", worker->client_id, worker->server_state->pattern->width, worker->server_state->pattern->height, worker->server_state->pattern->min_x, worker->server_state->pattern->min_y, worker->server_state->pattern->max_x, worker->server_state->pattern->max_y);
+	} else if (!strcasecmp(tokens->token[1].string, "center")) {
+		if (!worker->server_state->pattern) {
+			json_respond_simple(worker->f, "error", "Cannot center without pattern.");
+			return FAILED;
+		}
+		int actual_width = worker->server_state->pattern->max_x - worker->server_state->pattern->min_x + 1;
+		if (actual_width > 0) {
+			worker->server_state->pattern_offset = (200 / 2) - (actual_width / 2);
+		} else {
+			worker->server_state->pattern_offset = 0;
+		}
+		logmsg(LLVL_DEBUG, "(%d) Centered %d x %d pattern with minmax (%d, %d), (%d, %d) to %d", worker->client_id, worker->server_state->pattern->width, worker->server_state->pattern->height, worker->server_state->pattern->min_x, worker->server_state->pattern->min_y, worker->server_state->pattern->max_x, worker->server_state->pattern->max_y, worker->server_state->pattern_offset);
+	} else {
+		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
+		return FAILED;
+	}
+	json_respond_simple(worker->f, "ok", "Pattern edited.");
+	return SUCCESS;
+}
+
 static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if ((worker->server_state->pattern) && (tokens->token[1].integer >= 0) && (tokens->token[1].integer < worker->server_state->pattern->height)) {
 		worker->server_state->pattern_row = tokens->token[1].integer;
@@ -242,6 +317,12 @@ static enum execution_state_t handler_setrow(struct client_thread_data_t *worker
 		json_respond_simple(worker->f, "error", "No pattern set or given index %d out of bounds for pattern.", tokens->token[1].integer);
 		return FAILED;
 	}
+}
+
+static enum execution_state_t handler_setoffset(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	worker->server_state->pattern_offset = tokens->token[1].integer;
+	json_respond_simple(worker->f, "ok", "New offset set to %d.", worker->server_state->pattern_offset);
+	return SUCCESS;
 }
 
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
