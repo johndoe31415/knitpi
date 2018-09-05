@@ -31,13 +31,19 @@
 
 #define MAX_PNG_RECV_SIZE		(128 * 1024)
 
-enum server_mode_t {
-	MODE_OFFLINE,
-	MODE_ONLINE,
+enum knitting_mode_t {
+	MODE_OFF,
+	MODE_ON,
+};
+
+enum repeat_mode_t {
+	RPTMODE_ONESHOT,
+	RPTMODE_REPEAT,
 };
 
 struct server_state_t {
-	enum server_mode_t server_mode;
+	enum knitting_mode_t knitting_mode;
+	enum repeat_mode_t repeat_mode;
 	bool carriage_position_valid;
 	bool belt_phase;
 	bool direction_left_to_right;

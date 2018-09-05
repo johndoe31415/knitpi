@@ -1,54 +1,183 @@
 <%inherit file="base.html"/>
 <%block name="title">Status</%block>
-					
-<p>
-Connection status: <span id="connection_status">-</span><br />
-Skipped needles: <span id="skipped_needles_cnt">-</span><br />
-Carriage position: <span id="carriage_position">-</span>
-</p>
+
+<div style="margin-bottom: 20px">
+	<div class="show_without_connection" style="display:none">
+		<img src="/static/img/icon_connerr.svg" id="connection_error">
+	</div>
+	<div class="show_with_connection" style="display:none">
+		<button title="Start/stop knitting" class="menubutton btype-play" onclick="action_stop_play()" id="play_button" />
+		<button title="Repeat pattern" class="menubutton btype-repeat" onclick="action_repeat_oneshot()" id="repeat_button" />
+		<button title="Hide bar" onmousedown="action_hide_bar(true)" onmouseup="action_hide_bar(false)" class="menubutton btype-eye" />
+		<button title="Previous row" onclick="action_row_prev()" class="menubutton btype-prev" />
+		<button title="Next row" onclick="action_row_next()" class="menubutton btype-next" />
+		<button title="Reset skipped needle count" class="menubutton btype-skipcnt" id="skipped_needles_cnt"></button>
+	</div>
+</div>
 
 <div>
 	<img src="/static/img/needles.png" /><br />
 	<img src="/static/img/arrow.png" id="carriage_position_arrow" style="position: relative; left: 0px; top: -10px" />
 </div>
-<div id="no_pattern_loaded">
-	<img src="/rest/pattern" />
+<div class="show_with_pattern" style="display:none">
+	<div style="position: relative">
+		<img src="/rest/pattern" onerror="pattern_available(false)" onload="pattern_available(true)" />
+		<img src="/static/img/darkbar.png" id="active_row_bar" style="position: absolute; left: -10px; top : 5px">
+	</div>
+</div>
+<div class="show_without_pattern" style="display:none">
+	No pattern loaded.
 </div>
 
 <script language="JavaScript">
-const html_connection_status = document.getElementById("connection_status");
-const skipped_needles_cnt_span = document.getElementById("skipped_needles_cnt");
-const carriage_position_span = document.getElementById("carriage_position");
+const connection_error = document.getElementById("connection_error");
+const skipped_needles_cnt = document.getElementById("skipped_needles_cnt");
+//const carriage_position_span = document.getElementById("carriage_position");
 const carriage_position_arrow = document.getElementById("carriage_position_arrow");
+const have_pattern_loaded = document.getElementById("have_pattern_loaded");
+const no_pattern_loaded = document.getElementById("no_pattern_loaded");
+const active_row_bar = document.getElementById("active_row_bar");
+const play_button = document.getElementById("play_button");
+const repeat_button = document.getElementById("repeat_button");
+let last_status = null;
 
 const row_sound = (localStorage.getItem("setting_row_sound") != 0) ? new Audio("/static/sound/ding.mp3") : null;
 
-const websockets_url = "ws://" + window.location.host + "/ws/status";
-const websocket = new WebSocket(websockets_url);
-websocket.onmessage = wsevent_onmessage;
-websocket.onerror = wsevent_onerror;
+const websocket_uri = "ws://" + window.location.host + "/ws/status";
+let websocket = null;
 
 function wsevent_onmessage(event) {
 	const msg = JSON.parse(event.data);
 	if (msg["msg_type"] == "connection_error") {
-		html_connection_status.innerHTML = "Error: " + msg["text"];
+		connection_error.title = msg["text"];
+		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = "none"; });
+		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = ""; });
 	} else if (msg["msg_type"] == "status") {
-		html_connection_status.innerHTML = "Connected";
-		skipped_needles_cnt_span.innerHTML = msg["skipped_needles_cnt"];
-		carriage_position_span.innerHTML = msg["carriage_position"];
+		if (msg["knitting_mode"] == "off") {
+			play_button.classList.replace("btype-play", "btype-stop");
+		} else if (msg["knitting_mode"] == "on") {
+			play_button.classList.replace("btype-stop", "btype-play");
+		} else {
+			play_button.classList.remove("btype-stop");
+			play_button.classList.remove("btype-play");
+		}
+		if (msg["repeat_mode"] == "oneshot") {
+			repeat_button.classList.replace("btype-repeat", "btype-oneshot");
+		} else if (msg["repeat_mode"] == "repeat") {
+			repeat_button.classList.replace("btype-oneshot", "btype-repeat");
+		} else {
+			repeat_button.classList.remove("btype-oneshot");
+			repeat_button.classList.remove("btype-repeat");
+		}
+
+		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = ""; });
+		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = "none"; });
+		skipped_needles_cnt.innerHTML = msg["skipped_needles_cnt"];
+		carriage_position_arrow.title = msg["carriage_position"];
+
+		ypos = -10 + (msg["pattern_row"] * 5);
+		active_row_bar.style.top = ypos + "px";
 
 		const pixel_pos = (msg["carriage_position"] * 4.95);
 		carriage_position_arrow.style.left = pixel_pos + "px";
-		if (row_sound != null) {
+		if ((row_sound != null) && (last_status != null) && (last_status["pattern_row"] != msg["pattern_row"])) {
 			row_sound.play();
 		}
+
+		last_status = msg;
 	} else {
 		console.log("Unknown message type: ", msg)
 	}
 }
 
-function wsevent_onerror(event) {
-	console.log("Websocket error: " + event);
+function pattern_available(availibility) {
+	document.querySelectorAll(availibility ? ".show_without_pattern" : ".show_with_pattern").forEach(function(element) { element.style.display = "none"; });
+	document.querySelectorAll(availibility ? ".show_with_pattern" : ".show_without_pattern").forEach(function(element) { element.style.display = ""; });
 }
+
+function wsevent_onerror(event) {
+	console.log("Websocket error:", event);
+}
+
+function wsevent_onclose(event) {
+	console.log("Websocket closed:", event);
+	setTimeout(function() { websocket = connect_websocket(websocket_uri); }, 1000);
+}
+
+function action_stop_play() {
+	if (last_status != null) {
+		let uri = null;
+		if (last_status["knitting_mode"] == "on") {
+			uri = "/rest/set_knitting_mode/off";
+		} else if (last_status["knitting_mode"] == "off") {
+			uri = "/rest/set_knitting_mode/on";
+		} else {
+			console.log("Unknown play/stop action.", last_status);
+		}
+		if (uri) {
+			const request = new XMLHttpRequest();
+			request.open("POST", uri, true);
+			request.send();
+		}
+	}
+}
+
+function action_repeat_oneshot() {
+	if (last_status != null) {
+		let uri = null;
+		if (last_status["repeat_mode"] == "oneshot") {
+			uri = "/rest/set_repeat_mode/repeat";
+		} else if (last_status["repeat_mode"] == "repeat") {
+			uri = "/rest/set_repeat_mode/oneshot";
+		} else {
+			console.log("Unknown repeat action.", last_status);
+		}
+		if (uri) {
+			const request = new XMLHttpRequest();
+			request.open("POST", uri, true);
+			request.send();
+		}
+	}
+}
+
+function action_row_inc(value) {
+	if ((last_status != null) && (last_status["pattern_height"] > 0)) {
+		let pattern_row = last_status["pattern_row"] + value;
+		if (last_status["repeat_mode"] == "repeat") {
+			pattern_row = (pattern_row + last_status["pattern_height"]) % last_status["pattern_height"];
+		}
+
+		if ((pattern_row >= 0) && (pattern_row < last_status["pattern_height"])) {
+			/* Set last row to expected row so we don't get beeping */
+			last_status["pattern_row"] = pattern_row;
+
+			const request = new XMLHttpRequest();
+			request.open("POST", "/rest/pattern_row/" + pattern_row, true);
+			request.send();
+		}
+	}
+}
+
+function action_row_next() {
+	action_row_inc(1);
+}
+
+function action_row_prev() {
+	action_row_inc(-1);
+}
+
+function action_hide_bar(hide_bar) {
+	active_row_bar.style.display = hide_bar ? "none" : "";
+}
+
+function connect_websocket(uri) {
+	const websocket = new WebSocket(uri);
+	websocket.onmessage = wsevent_onmessage;
+	websocket.onerror = wsevent_onerror;
+	websocket.onclose = wsevent_onclose;
+	return websocket;
+}
+
+websocket = connect_websocket(websocket_uri);
 
 </script>

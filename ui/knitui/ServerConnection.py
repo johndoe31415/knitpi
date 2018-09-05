@@ -33,6 +33,7 @@ class ServerConnection(object):
 		self._socket_filename = socket_filename
 		self._conn = None
 		self._error = None
+		self._debug = True
 
 	@property
 	def last_error(self):
@@ -46,7 +47,8 @@ class ServerConnection(object):
 			self._conn_file = self._conn.makefile(mode = "wrb")
 
 	def _tx(self, command):
-		print("->", command)
+		if self._debug:
+			print("->", command)
 		self._conn_file.write(command.encode("ascii") + b"\n")
 
 	def _rx(self):
@@ -77,6 +79,12 @@ class ServerConnection(object):
 			response = None
 		if parse and (response is not None) and (not read_bindata):
 			response = json.loads(response)
+		if self._debug and (response is not None) and (not read_bindata):
+			if isinstance(response, bytes):
+				decoded_response = json.loads(response)
+			else:
+				decoded_response = response
+			print("<-", decoded_response)
 		return response
 
 	def get_status(self, parse = False):
@@ -92,3 +100,12 @@ class ServerConnection(object):
 	def set_pattern(self, xoffset, yoffset, merge, png_data, parse = False):
 		assert(isinstance(merge, bool))
 		return self._execute("setpattern %d %d %s" % (xoffset, yoffset, str(merge)), write_bindata = png_data, parse = parse)
+
+	def set_row(self, row_id, parse = False):
+		return self._execute("setrow %d" % (row_id), parse = parse)
+
+	def set_knitting_mode(self, knitting_mode, parse = False):
+		return self._execute("setknitmode %s" % (knitting_mode), parse = parse)
+
+	def set_repeat_mode(self, repeat_mode, parse = False):
+		return self._execute("setrepeatmode %s" % (repeat_mode), parse = parse)

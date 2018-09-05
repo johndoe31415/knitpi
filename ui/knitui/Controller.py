@@ -23,15 +23,18 @@ import time
 import random
 import json
 import flask
+import threading
 import mako.lookup
 from knitui.ServerConnection import ServerConnection
+import gevent.event
 
 class Controller(object):
 	def __init__(self):
 		self._config = {
-			"server_socket":		"../firmware/foo",
+			"server_socket":		"../firmware/socket",
 		}
 		self._template_lookup = mako.lookup.TemplateLookup([ "knitui/templates" ], input_encoding = "utf-8", strict_undefined = True)
+		self._isleep_cond = gevent.event.Event()
 
 	def serve_page(self, request, template_name, args = None):
 		if args is None:
@@ -46,35 +49,34 @@ class Controller(object):
 	def rest_pattern_get(self, request):
 		server_connection = ServerConnection(self._config["server_socket"])
 		pattern = server_connection.get_pattern()
-		if len(pattern) > 0:
+		if pattern is not None:
 			return flask.Response(pattern, mimetype = "image/png")
 		else:
 			return flask.Response("No pattern loaded.\n", status = 404, mimetype = "text/plain")
 
-	def _msg(self, msgtype, msg):
+	def _msg(self, request, msgtype, msg):
 		print(msgtype, msg)
 
 	def rest_pattern_post(self, request):
 		msg = None
 		if ("set_pattern" in request.form) or ("merge_pattern" in request.form):
 			if "pattern" not in request.files:
-				self._msg("error", "No file provided.")
-			try:
-				(x, y) = (int(request.form["xoffset"]), int(request.form["yoffset"]))
-			except ValueError:
-				self._msg("error", "Could not read X or Y offset")
-
-			pattern_file = request.files["pattern"]
-			if pattern_file.mimetype not in [ "image/png" ]:
-				self._msg("error", "Unsupported file type uploaded: %s" % (pattern_file.mimetype))
+				self._msg(request, "error", "No file provided.")
 			else:
-				file_data = pattern_file.stream.read()
-				server_connection = ServerConnection(self._config["server_socket"])
-				server_connection.set_pattern(file_data)
-				if server_connection.last_error is not None:
-					self._msg("error", "Could not send pattern to knitserver.")
+				try:
+					(x, y) = (int(request.form["xoffset"]), int(request.form["yoffset"]))
+				except ValueError:
+					self._msg(request, "error", "Could not read X or Y offset.")
 
-			asjdio
+				pattern_file = request.files["pattern"]
+				if pattern_file.mimetype not in [ "image/png" ]:
+					self._msg(request, "error", "Unsupported file type uploaded: %s" % (pattern_file.mimetype))
+				else:
+					file_data = pattern_file.stream.read()
+					server_connection = ServerConnection(self._config["server_socket"])
+					server_connection.set_pattern(xoffset = x, yoffset = y, merge = ("merge_pattern" in request.form), png_data = file_data)
+					if server_connection.last_error is not None:
+						self._msg(request, "error", "Could not send pattern to knitserver.")
 		elif "center_pattern" in request.form:
 			pass
 		elif "trim_pattern" in request.form:
@@ -82,12 +84,37 @@ class Controller(object):
 		elif "remove_pattern" in request.form:
 			pass
 		else:
-			self._msg("error", "Unknown request sent to rest_pattern_post.")
+			self._msg(request, "error", "Unknown request sent to rest_pattern_post.")
 		return flask.redirect("/page/pattern")
+
+	def _json_response(self, response):
+		return flask.Response(str(response), status = 200, mimetype = "application/json")
+
+	def _single_server_action(self, action):
+		server_connection = ServerConnection(self._config["server_socket"])
+		result = action(server_connection)
+		self._isleep_interrupt()
+		return result
+
+	def rest_setrow(self, request, rowid):
+		return self._single_server_action(lambda server_connection: server_connection.set_row(rowid))
+
+	def rest_setknittingmode(self, request, knitting_mode):
+		return self._single_server_action(lambda server_connection: server_connection.set_knitting_mode(knitting_mode))
+
+	def rest_setrepeatmode(self, request, repeat_mode):
+		return self._single_server_action(lambda server_connection: server_connection.set_repeat_mode(repeat_mode))
+
+	def _isleep(self, max_sleeptime):
+		self._isleep_cond.clear()
+		self._isleep_cond.wait(timeout = max_sleeptime)
+
+	def _isleep_interrupt(self):
+		self._isleep_cond.set()
 
 	def ws_status(self, ws):
 		server_connection = ServerConnection(self._config["server_socket"])
-		while True:
+		while ws.connected:
 			status_json = server_connection.get_status()
 			if status_json is not None:
 				ws.send(status_json)
@@ -97,12 +124,11 @@ class Controller(object):
 					"text":			str(server_connection.last_error),
 				}
 				ws.send(json.dumps(msg))
-				time.sleep(1)
-			time.sleep(0.25)
+			self._isleep(3)
 
 	def ws_echo(self, ws):
 		ws.send(b"Welcome to the Echo server")
-		while True:
+		while ws.connected:
 			msg = ws.receive()
 			if msg is not None:
 				if msg != b"":
@@ -112,7 +138,7 @@ class Controller(object):
 
 	def ws_push(self, ws):
 		ws.send(b"Welcome to the Push server")
-		while True:
+		while ws.connected:
 			rnd = random.random()
 			msg = "Waiting %.3f secs" % (rnd)
 			ws.send(msg.encode())

@@ -108,6 +108,9 @@ static bool argument_parse_bool(union token_t *token) {
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 
 static struct command_t known_commands[] = {
 	{
@@ -135,27 +138,62 @@ static struct command_t known_commands[] = {
 			{ .name = "rawdata/bool", .parser = argument_parse_bool },
 		},
 	},
+	{
+		.cmdname = "setrow",
+		.handler = handler_setrow,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "rowid/int", .parser = argument_parse_int },
+		},
+	},
+	{
+		.cmdname = "setknitmode",
+		.handler = handler_setknitmode,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "[on|off]/str" },
+		},
+	},
+	{
+		.cmdname = "setrepeatmode",
+		.handler = handler_setrepeatmode,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "[oneshot|repeat]/str" },
+		},
+	},
 };
 #define KNOWN_COMMAND_COUNT		(sizeof(known_commands) / sizeof(struct command_t))
 
-static const char *server_mode_to_str(enum server_mode_t mode) {
+static const char *knitting_mode_to_str(enum knitting_mode_t mode) {
 	switch (mode) {
-		case MODE_OFFLINE:	return "MODE_OFFLINE";
-		case MODE_ONLINE:	return "MODE_ONLINE";
+		case MODE_OFF:	return "off";
+		case MODE_ON:	return "on";
 	}
-	return "Unknown";
+	return "unknown";
+}
+
+static const char *repeat_mode_to_str(enum repeat_mode_t mode) {
+	switch (mode) {
+		case RPTMODE_ONESHOT:	return "oneshot";
+		case RPTMODE_REPEAT:	return "repeat";
+	}
+	return "unknown";
 }
 
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	struct json_dict_entry_t json_dict[] = {
 		JSON_DICTENTRY_STR("msg_type", "status"),
-		JSON_DICTENTRY_STR("server_mode", server_mode_to_str(worker->server_state->server_mode)),
+		JSON_DICTENTRY_STR("knitting_mode", knitting_mode_to_str(worker->server_state->knitting_mode)),
+		JSON_DICTENTRY_STR("repeat_mode", repeat_mode_to_str(worker->server_state->repeat_mode)),
 		JSON_DICTENTRY_BOOL("carriage_position_valid", worker->server_state->carriage_position_valid),
 		JSON_DICTENTRY_BOOL("belt_phase", worker->server_state->belt_phase),
 		JSON_DICTENTRY_BOOL("direction_left_to_right", worker->server_state->direction_left_to_right),
 		JSON_DICTENTRY_INT("carriage_position", worker->server_state->carriage_position),
 		JSON_DICTENTRY_INT("skipped_needles_cnt", sled_get_skipped_needles_cnt()),
 		JSON_DICTENTRY_INT("pattern_row", worker->server_state->pattern_row),
+		JSON_DICTENTRY_INT("pattern_width", worker->server_state->pattern ? worker->server_state->pattern->width : 0),
+		JSON_DICTENTRY_INT("pattern_height", worker->server_state->pattern ? worker->server_state->pattern->height : 0),
 		{ 0 },
 	};
 	json_print_dict(worker->f, json_dict);
@@ -192,6 +230,43 @@ static enum execution_state_t handler_getpattern(struct client_thread_data_t *wo
 		json_respond_simple(worker->f, "error", "Unable to convert pattern to PNG.");
 		return FAILED;
 	}
+	return SUCCESS;
+}
+
+static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if ((worker->server_state->pattern) && (tokens->token[1].integer >= 0) && (tokens->token[1].integer < worker->server_state->pattern->height)) {
+		worker->server_state->pattern_row = tokens->token[1].integer;
+		json_respond_simple(worker->f, "ok", "New row set.");
+		return SUCCESS;
+	} else {
+		json_respond_simple(worker->f, "error", "No pattern set or given index %d out of bounds for pattern.", tokens->token[1].integer);
+		return FAILED;
+	}
+}
+
+static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if (!strcasecmp(tokens->token[1].string, "on")) {
+		worker->server_state->knitting_mode = MODE_ON;
+	} else if (!strcasecmp(tokens->token[1].string, "off")) {
+		worker->server_state->knitting_mode = MODE_OFF;
+	} else {
+		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
+		return FAILED;
+	}
+	json_respond_simple(worker->f, "ok", "New knitting mode: %s", knitting_mode_to_str(worker->server_state->knitting_mode));
+	return SUCCESS;
+}
+
+static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if (!strcasecmp(tokens->token[1].string, "oneshot")) {
+		worker->server_state->repeat_mode = RPTMODE_ONESHOT;
+	} else if (!strcasecmp(tokens->token[1].string, "repeat")) {
+		worker->server_state->repeat_mode = RPTMODE_REPEAT;
+	} else {
+		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
+		return FAILED;
+	}
+	json_respond_simple(worker->f, "ok", "New repeat mode: %s", repeat_mode_to_str(worker->server_state->repeat_mode));
 	return SUCCESS;
 }
 

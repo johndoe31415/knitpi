@@ -41,6 +41,18 @@ def rest_pattern_get():
 def rest_pattern_post():
 	return ctrlr.rest_pattern_post(flask.request)
 
+@app.route("/rest/pattern_row/<int:rowid>", methods = [ "POST" ])
+def rest_setrow_post(rowid):
+	return ctrlr.rest_setrow(flask.request, rowid)
+
+@app.route("/rest/set_knitting_mode/<knitting_mode>", methods = [ "POST" ])
+def rest_setknittingmode_post(knitting_mode):
+	return ctrlr.rest_setknittingmode(flask.request, knitting_mode)
+
+@app.route("/rest/set_repeat_mode/<repeat_mode>", methods = [ "POST" ])
+def rest_setrepeatmode_post(repeat_mode):
+	return ctrlr.rest_setrepeatmode(flask.request, repeat_mode)
+
 @websocket.route("/ws/status")
 def ws_status(ws):
 	return ctrlr.ws_status(ws)

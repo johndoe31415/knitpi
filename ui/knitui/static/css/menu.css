@@ -1,0 +1,52 @@
+button.menubutton {
+	width: 54px;
+	height: 54px;
+	margin-right: 5px;
+	background-color: #f0f0f0;
+	background-repeat: no-repeat;
+	background-position: center;
+	border-radius: 4px;
+	overflow: hidden;
+	outline: none;
+	vertical-align: text-bottom;
+}
+
+button.btype-connerr {
+	background-image: url("/static/img/icon_conerr.svg");
+}
+
+button.btype-oneshot {
+	background-image: url("/static/img/icon_oneshot.svg");
+}
+
+button.btype-repeat {
+	background-image: url("/static/img/icon_repeat.svg");
+}
+
+button.btype-play {
+	background-image: url("/static/img/icon_play.svg");
+}
+
+button.btype-stop {
+	background-image: url("/static/img/icon_stop.svg");
+}
+
+button.btype-prev {
+	background-image: url("/static/img/icon_prev.svg");
+}
+
+button.btype-next {
+	background-image: url("/static/img/icon_next.svg");
+}
+
+button.btype-eye {
+	background-image: url("/static/img/icon_eye.svg");
+}
+
+button.btype-skipcnt {
+	background-image: url("/static/img/icon_skipcnt.svg");
+}
+
+button.menubutton:hover {
+	background-color: #fff;
+}
