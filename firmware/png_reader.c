@@ -33,7 +33,7 @@
 #include "png_reader.h"
 #include "logging.h"
 
-static void membuf_read_data_fn(png_structp png_ptr, uint8_t *data, unsigned long length) {
+static void membuf_read_data_fn(png_structp png_ptr, uint8_t *data, png_size_t length) {
 	void *vmembuf = png_get_io_ptr(png_ptr);
 	struct membuf_t *membuf = (struct membuf_t*)vmembuf;
 	membuf_read(membuf, data, length);
@@ -65,6 +65,13 @@ struct pattern_t* png_read_pattern(struct membuf_t *membuf, unsigned int offsetx
 		png_destroy_read_struct(&png_ptr, NULL, NULL);
 		perror("png_create_info_struct");
 		return NULL;
+	}
+
+	uint32_t *pixel_data = NULL;
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+		free(pixel_data);
+		return pattern;
 	}
 
 	membuf_rewind(membuf);
@@ -115,7 +122,7 @@ struct pattern_t* png_read_pattern(struct membuf_t *membuf, unsigned int offsetx
 		return NULL;
 	}
 
-	uint32_t *pixel_data = malloc(width * height * 4);
+	pixel_data = malloc(width * height * 4);
 	if (!pixel_data) {
 		logmsg(LLVL_ERROR, "Failed to allocate %d bytes for pixel data of PNG image.", width * height * 4);
 		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);

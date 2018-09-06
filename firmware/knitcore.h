@@ -21,15 +21,14 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#ifndef __KNITSERVER_H__
-#define __KNITSERVER_H__
+#ifndef __KNITCORE_H__
+#define __KNITCORE_H__
 
 #include <stdbool.h>
 #include <stdint.h>
 #include "pattern.h"
 #include "atomic.h"
-
-#define MAX_PNG_RECV_SIZE		(128 * 1024)
+#include "isleep.h"
 
 enum knitting_mode_t {
 	MODE_OFF,
@@ -42,8 +41,10 @@ enum repeat_mode_t {
 };
 
 struct server_state_t {
+	struct isleep_t event_notification;
 	enum knitting_mode_t knitting_mode;
 	enum repeat_mode_t repeat_mode;
+	bool even_rows_left_to_right;
 	bool carriage_position_valid;
 	bool belt_phase;
 	bool direction_left_to_right;
@@ -54,7 +55,14 @@ struct server_state_t {
 	struct atomic_ctr_t thread_count;
 };
 
+#define SERVER_STATE_INITIALIZER		{		\
+	.event_notification = ISLEEP_INITIALIZER,	\
+	.thread_count = ATOMIC_CTR_INITIALIZER(0),	\
+}
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+void sled_update(struct server_state_t *server_state);
+void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase, bool direction_left_to_right);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

@@ -37,7 +37,7 @@
 #include <stdarg.h>
 #include "sled.h"
 #include "json.h"
-#include "knitserver.h"
+#include "knitcore.h"
 #include "membuf.h"
 #include "atomic.h"
 #include "logging.h"
@@ -47,12 +47,14 @@
 #include "tokenizer.h"
 #include "png_reader.h"
 #include "png_writer.h"
+#include "isleep.h"
 
 #define MAX_CMD_ARG_COUNT		8
 
 enum execution_state_t {
 	SUCCESS,
-	FAILED,				/* Recoverable: Keep connection going */
+	SILENT_FAILED,		/* Recoverable: Keep connection going and do not log */
+	FAILED,				/* Recoverable: Keep connection going, but log */
 	FATAL_ERROR,		/* Non-recoverable, disconnect. */
 };
 
@@ -106,6 +108,7 @@ static bool argument_parse_bool(union token_t *token) {
 }
 
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_statuswait(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_editpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
@@ -118,6 +121,14 @@ static struct command_t known_commands[] = {
 	{
 		.cmdname = "status",
 		.handler = handler_status,
+	},
+	{
+		.cmdname = "statuswait",
+		.handler = handler_statuswait,
+		.arg_count = 1,
+		.arguments = {
+			{ .name = "timeout_millisecs/int", .parser = argument_parse_int },
+		},
 	},
 	{
 		.cmdname = "setpattern",
@@ -223,6 +234,13 @@ static enum execution_state_t handler_status(struct client_thread_data_t *worker
 	return SUCCESS;
 }
 
+static enum execution_state_t handler_statuswait(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if (tokens->token[1].integer > 0) {
+		isleep(&worker->server_state->event_notification, tokens->token[1].integer);
+	}
+	return handler_status(worker, tokens, membuf);
+}
+
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	int offsetx = tokens->token[1].integer;
 	int offsety = tokens->token[2].integer;
@@ -252,6 +270,9 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 			worker->server_state->pattern = merge_pattern;
 		}
 	}
+	worker->server_state->pattern_offset = 0;
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New pattern set.");
 	return SUCCESS;
 }
@@ -260,9 +281,15 @@ static enum execution_state_t handler_getpattern(struct client_thread_data_t *wo
 	bool rawdata = tokens->token[1].boolean;
 	if (!worker->server_state->pattern) {
 		json_respond_simple(worker->f, "error", "No pattern is set.");
-		return FAILED;
+		return SILENT_FAILED;
 	}
-	if (!png_write_pattern_mem(worker->server_state->pattern, membuf, rawdata ? NULL : NULL)) {	// TODO implement raw pattern
+	const struct png_write_options_t raw_write_options = {
+		.pixel_width = 1,
+		.pixel_height = 1,
+		.grid_width = 0,
+		.color_scheme = COLSCHEME_RAW,
+	};
+	if (!png_write_pattern_mem(worker->server_state->pattern, membuf, rawdata ? &raw_write_options : NULL)) {
 		json_respond_simple(worker->f, "error", "Unable to convert pattern to PNG.");
 		return FAILED;
 	}
@@ -288,6 +315,9 @@ static enum execution_state_t handler_editpattern(struct client_thread_data_t *w
 		pattern_free(worker->server_state->pattern);
 		worker->server_state->pattern = trimmed;
 		logmsg(LLVL_DEBUG, "(%d) Trimmed %d x %d pattern, new minmax (%d, %d), (%d, %d)", worker->client_id, worker->server_state->pattern->width, worker->server_state->pattern->height, worker->server_state->pattern->min_x, worker->server_state->pattern->min_y, worker->server_state->pattern->max_x, worker->server_state->pattern->max_y);
+		if (worker->server_state->pattern_row >= worker->server_state->pattern->height) {
+			worker->server_state->pattern_row = worker->server_state->pattern->height - 1;
+		}
 	} else if (!strcasecmp(tokens->token[1].string, "center")) {
 		if (!worker->server_state->pattern) {
 			json_respond_simple(worker->f, "error", "Cannot center without pattern.");
@@ -304,6 +334,8 @@ static enum execution_state_t handler_editpattern(struct client_thread_data_t *w
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
 		return FAILED;
 	}
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "Pattern edited.");
 	return SUCCESS;
 }
@@ -311,6 +343,8 @@ static enum execution_state_t handler_editpattern(struct client_thread_data_t *w
 static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if ((worker->server_state->pattern) && (tokens->token[1].integer >= 0) && (tokens->token[1].integer < worker->server_state->pattern->height)) {
 		worker->server_state->pattern_row = tokens->token[1].integer;
+		sled_update(worker->server_state);
+		isleep_interrupt(&worker->server_state->event_notification);
 		json_respond_simple(worker->f, "ok", "New row set.");
 		return SUCCESS;
 	} else {
@@ -321,19 +355,48 @@ static enum execution_state_t handler_setrow(struct client_thread_data_t *worker
 
 static enum execution_state_t handler_setoffset(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	worker->server_state->pattern_offset = tokens->token[1].integer;
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New offset set to %d.", worker->server_state->pattern_offset);
 	return SUCCESS;
 }
 
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if (!strcasecmp(tokens->token[1].string, "on")) {
-		worker->server_state->knitting_mode = MODE_ON;
+		if (!worker->server_state->pattern) {
+			json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without pattern.");
+			logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without pattern.");
+			return FAILED;
+		}
+
+		if (worker->server_state->carriage_position_valid) {
+			if (worker->server_state->carriage_position <= worker->server_state->pattern->min_x + worker->server_state->pattern_offset) {
+				/* We're left of pattern */
+				worker->server_state->knitting_mode = MODE_ON;
+				worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) == 0);
+			} else if (worker->server_state->carriage_position >= worker->server_state->pattern->max_x + worker->server_state->pattern_offset) {
+				/* We're right of pattern */
+				worker->server_state->knitting_mode = MODE_ON;
+				worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) != 0);
+			} else {
+				/* We're in the middle of the pattern */
+				json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without knowing if movement left or right: carriage at %d and pattern from %d to %d.", worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
+				logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without valid position.");
+				return FAILED;
+			}
+		} else {
+			json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without valid position.");
+			logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without valid position.");
+			return FAILED;
+		}
 	} else if (!strcasecmp(tokens->token[1].string, "off")) {
 		worker->server_state->knitting_mode = MODE_OFF;
 	} else {
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
 		return FAILED;
 	}
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New knitting mode: %s", knitting_mode_to_str(worker->server_state->knitting_mode));
 	return SUCCESS;
 }
@@ -347,6 +410,8 @@ static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t 
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
 		return FAILED;
 	}
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New repeat mode: %s", repeat_mode_to_str(worker->server_state->repeat_mode));
 	return SUCCESS;
 }

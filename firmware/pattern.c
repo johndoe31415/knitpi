@@ -57,7 +57,7 @@ struct pattern_t* pattern_new(unsigned int width, unsigned int height) {
 	return pattern;
 }
 
-static uint8_t pattern_get_color(const struct pattern_t *pattern, unsigned int x, unsigned int y) {
+uint8_t pattern_get_color(const struct pattern_t *pattern, unsigned int x, unsigned int y) {
 	if ((x >= pattern->width) || (y >= pattern->height)) {
 		return 0;
 	}

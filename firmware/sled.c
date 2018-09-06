@@ -31,6 +31,7 @@ static int sled_position = 0;
 static uint8_t last_rotary = 0xff;
 static bool pos_valid = false;
 static unsigned int skipped_needles_cnt = 0;
+static struct server_state_t *server_state;
 static sled_callback_t sled_callback = NULL;
 static int last_reported_position = 0;
 static bool belt_phase = false;
@@ -65,7 +66,8 @@ static void rotary_encoder_movement(void) {
 	last_rotary = pos;
 }
 
-void sled_set_callback(sled_callback_t callback) {
+void sled_set_callback(struct server_state_t *new_server_state, sled_callback_t callback) {
+	server_state = new_server_state;
 	sled_callback = callback;
 }
 
@@ -100,7 +102,7 @@ void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 	if (sled_callback) {
 		int sled_pos = rotary_get_position();
 		if (sled_pos != last_reported_position) {
-			sled_callback(sled_pos, belt_phase, sled_pos > last_reported_position);
+			sled_callback(server_state, sled_pos, belt_phase, sled_pos > last_reported_position);
 		}
 		last_reported_position = sled_pos;
 	}

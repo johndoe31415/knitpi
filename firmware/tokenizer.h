@@ -32,6 +32,7 @@ union token_t {
 	char *string;
 	int integer;
 	bool boolean;
+	double dbl;
 };
 
 struct tokens_t {

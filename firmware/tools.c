@@ -148,3 +148,13 @@ bool safe_atoi(const char *string, int *result) {
 	}
 	return false;
 }
+
+bool safe_atod(const char *string, double *result) {
+	char *endptr = NULL;
+	double dbl_value = strtod(string, &endptr);
+	if ((endptr != string) && (*endptr == 0)) {
+		*result = dbl_value;
+		return true;
+	}
+	return false;
+}

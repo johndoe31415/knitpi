@@ -46,11 +46,16 @@ class Controller(object):
 		result = template.render(**args)
 		return result
 
-	def rest_pattern_get(self, request):
+	def rest_pattern_get(self, request, raw_pattern = False, attachment = False):
 		server_connection = ServerConnection(self._config["server_socket"])
-		pattern = server_connection.get_pattern()
+		pattern = server_connection.get_pattern(rawdata = raw_pattern)
 		if pattern is not None:
-			return flask.Response(pattern, mimetype = "image/png")
+			headers = { }
+			if attachment:
+				status = server_connection.get_status(parse = True)
+				filename = "knitpi_pattern_%03dx%03d.png" % (status["pattern_width"], status["pattern_height"])
+				headers["Content-Disposition"] = "attachment; filename=\"%s\"" % (filename)
+			return flask.Response(pattern, mimetype = "image/png", headers = headers)
 		else:
 			return flask.Response("No pattern loaded.\n", status = 404, mimetype = "text/plain")
 
@@ -120,8 +125,9 @@ class Controller(object):
 
 	def ws_status(self, ws):
 		server_connection = ServerConnection(self._config["server_socket"])
+		wait_milliseconds = 0
 		while ws.connected:
-			status_json = server_connection.get_status()
+			status_json = server_connection.get_status(wait_milliseconds = wait_milliseconds)
 			if status_json is not None:
 				ws.send(status_json)
 			else:
@@ -130,7 +136,8 @@ class Controller(object):
 					"text":			str(server_connection.last_error),
 				}
 				ws.send(json.dumps(msg))
-			self._isleep(3)
+			self._isleep(0.1)
+			wait_milliseconds = 1000		# First one immediately, updates only on demand
 
 	def ws_echo(self, ws):
 		ws.send(b"Welcome to the Echo server")

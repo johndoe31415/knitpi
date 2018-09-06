@@ -40,6 +40,8 @@ static const uint32_t lookup_colors[] = {
 };
 #define PALETTE_SIZE 		(sizeof(lookup_colors) / sizeof(uint32_t))
 
+typedef uint32_t (*color_lookup_fnc)(const struct pattern_t *color, uint8_t color_index);
+
 struct png_write_file_ctx_t {
 	FILE *f;
 };
@@ -63,23 +65,47 @@ static const struct png_write_options_t default_write_options = {
 	.pixel_height = 4,
 	.grid_width = 1,
 	.grid_color = 0xaaaaaaaa,
+	.color_scheme = COLSCHEME_PRETTY,
 };
 
-static uint32_t lookup_color(uint8_t color_index) {
+static uint32_t lookup_color_raw(const struct pattern_t *pattern, uint8_t color_index) {
 	if (color_index == 0) {
-		/* Fully transparent */
+		return PIXEL_FULLY_TRANSPARENT;
+	} else {
+		if ((color_index - 1) < PALETTE_SIZE) {
+			/* Choose fancy colors for the first few */
+			return lookup_colors[(color_index - 1) % PALETTE_SIZE];
+		} else {
+			/* Choose grayscale for the others */
+			uint8_t gray_value = (color_index - 1) * (255 / pattern->used_colors);
+			return MK_GRAY(gray_value);
+		}
+	}
+}
+
+static uint32_t lookup_color_pretty(const struct pattern_t *pattern, uint8_t color_index) {
+	if (color_index == 0) {
 		return PIXEL_FULLY_TRANSPARENT;
 	} else {
 		return lookup_colors[(color_index - 1) % PALETTE_SIZE];
 	}
 }
 
+static color_lookup_fnc get_lookup_function(enum colorscheme_t colscheme) {
+	switch (colscheme) {
+		case COLSCHEME_PRETTY: return lookup_color_pretty;
+		case COLSCHEME_RAW: return lookup_color_raw;
+	}
+	return lookup_color_raw;
+}
+
+
 static bool init_file_io(struct png_write_ctx_t *ctx, png_structp png_ptr) {
 	png_init_io(png_ptr, ctx->custom.file.f);
 	return true;
 }
 
-static void write_memory_callback(png_structp png_ptr, uint8_t *new_data, unsigned long length) {
+static void write_memory_callback(png_structp png_ptr, uint8_t *new_data, png_size_t length) {
 	void *vctx = png_get_io_ptr(png_ptr);
 	struct png_write_ctx_t *ctx = (struct png_write_ctx_t*)vctx;
 	if (!ctx->custom.mem.success) {
@@ -129,6 +155,7 @@ static bool png_write_pattern_generic(const struct pattern_t *pattern, struct pn
 	png_write_info(png_ptr, info_ptr);
 	png_destroy_info_struct(png_ptr, &info_ptr);
 
+	color_lookup_fnc color_lookup = get_lookup_function(options->color_scheme);
 	for (int y = 0; y < pattern->height; y++) {
 		uint32_t png_row[width];
 		memset(png_row, 0, sizeof(png_row));
@@ -140,12 +167,10 @@ static bool png_write_pattern_generic(const struct pattern_t *pattern, struct pn
 			/* Write color pixels */
 			for (int x = 0; x < pattern->width; x++) {
 				uint8_t pixel = ptrn_row[x];
+				uint32_t color = color_lookup(pattern, pixel);
 				for (int rptx = 0; rptx < options->pixel_width; rptx++) {
-					if (pixel != 0) {
-						png_row[(x * options->pixel_width) + (x * options->grid_width) + rptx] = lookup_color(pixel);
-					}
+					png_row[(x * options->pixel_width) + (x * options->grid_width) + rptx] = color;
 				}
-
 			}
 			/* Write grid pixels */
 			for (int x = 1; x < pattern->width; x++) {

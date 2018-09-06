@@ -47,7 +47,7 @@ elif args.command == "cont-status":
 			print("Last error: %s" % (conn.last_error))
 		time.sleep(1)
 elif args.command == "getpattern":
-	data = conn.get_pattern()
+	data = conn.get_pattern(rawdata = True)
 	if data is not None:
 		print("Received %d bytes." % (len(data)))
 		with open(args.file, "wb") as f:

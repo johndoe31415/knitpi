@@ -27,9 +27,10 @@
 #define MAX_PATTERN_WIDTH	400
 #define MAX_PATTERN_HEIGHT	1000
 
-#define UINT8(x)						((x) & 0xff)
+#define UINT8(x)						((uint32_t)((x) & 0xff))
 #define MK_RGBA(r, g, b, a)				((UINT8(a) << 24) | (UINT8(b) << 16) | (UINT8(g) << 8) | (UINT8(r) << 0))
 #define MK_RGB(r, g, b)					MK_RGBA((r), (g), (b), 0xff)
+#define MK_GRAY(grayval)				MK_RGB((grayval), (grayval), (grayval))
 
 #define PIXEL_GET_RGB(pixel)			((pixel) & 0xffffff)
 #define PIXEL_GET_ALPHA(pixel)			UINT8((pixel) >> 24)
@@ -49,6 +50,7 @@ struct pattern_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 struct pattern_t* pattern_new(unsigned int width, unsigned int height);
+uint8_t pattern_get_color(const struct pattern_t *pattern, unsigned int x, unsigned int y);
 void pattern_set_rgba(struct pattern_t *pattern, unsigned int x, unsigned int y, uint32_t rgba);
 uint8_t* pattern_row_rw(const struct pattern_t *pattern, unsigned int y);
 const uint8_t* pattern_row(const struct pattern_t *pattern, unsigned int y);

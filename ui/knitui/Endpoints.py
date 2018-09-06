@@ -37,6 +37,10 @@ def show_page(name):
 def rest_pattern_get():
 	return ctrlr.rest_pattern_get(flask.request)
 
+@app.route("/rest/pattern/raw", methods = [ "GET" ])
+def rest_pattern_raw_get():
+	return ctrlr.rest_pattern_get(flask.request, raw_pattern = True, attachment = True)
+
 @app.route("/rest/pattern", methods = [ "POST" ])
 def rest_pattern_post():
 	return ctrlr.rest_pattern_post(flask.request)
@@ -49,9 +53,8 @@ def rest_editpattern_post(edit_type):
 def rest_setrow_post(rowid):
 	return ctrlr.rest_setrow(flask.request, rowid)
 
-@app.route("/rest/pattern_offset/<new_offset>", methods = [ "POST" ])
+@app.route("/rest/pattern_offset/<long:new_offset>", methods = [ "POST" ])
 def rest_pattern_offset_post(new_offset):
-	new_offset = int(new_offset)
 	return ctrlr.rest_setpatternoffset(flask.request, new_offset)
 
 @app.route("/rest/set_knitting_mode/<knitting_mode>", methods = [ "POST" ])

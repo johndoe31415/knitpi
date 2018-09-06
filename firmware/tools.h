@@ -41,6 +41,7 @@ bool ignore_signal(int signum);
 bool file_discard_data(FILE *f, unsigned int discard_bytes);
 int trim_crlf(char *string);
 bool safe_atoi(const char *string, int *result);
+bool safe_atod(const char *string, double *result);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

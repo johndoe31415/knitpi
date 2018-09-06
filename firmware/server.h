@@ -25,7 +25,7 @@
 #define __SERVER_H__
 
 #include <stdbool.h>
-#include "knitserver.h"
+#include "knitcore.h"
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 bool start_server(struct server_state_t *server_state);

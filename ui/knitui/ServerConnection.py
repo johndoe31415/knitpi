@@ -78,17 +78,20 @@ class ServerConnection(object):
 			self._error = e
 			response = None
 		if parse and (response is not None) and (not read_bindata):
-			response = json.loads(response)
+			response = json.loads(response.decode("ascii"))
 		if self._debug and (response is not None) and (not read_bindata):
 			if isinstance(response, bytes):
-				decoded_response = json.loads(response)
+				decoded_response = json.loads(response.decode("ascii"))
 			else:
 				decoded_response = response
 			print("<-", decoded_response)
 		return response
 
-	def get_status(self, parse = False):
-		return self._execute("status", parse = parse)
+	def get_status(self, wait_milliseconds = 0, parse = False):
+		if wait_milliseconds == 0:
+			return self._execute("status", parse = parse)
+		else:
+			return self._execute("statuswait %d" % (wait_milliseconds), parse = parse)
 
 	def get_pattern(self, rawdata = False):
 		assert(isinstance(rawdata, bool))

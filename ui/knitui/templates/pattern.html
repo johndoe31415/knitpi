@@ -1,14 +1,22 @@
 <%inherit file="base.html"/>
 <%block name="title">Pattern</%block>
 
-<img src="/rest/pattern" />
+<div class="show_with_pattern" style="display:none">
+	<img src="/rest/pattern" class="show_with_pattern" style="display:none" onerror="pattern_available(false)" onload="pattern_available(true)" id="pattern" />
+</div>
+<div class="show_without_pattern" style="display:none">
+	No pattern loaded.
+</div>
 
 <h2>Load Pattern</h2>
 <form class="pure-form pure-form-aligned" method="post" action="/rest/pattern" enctype="multipart/form-data">
 	<fieldset>
 		<div class="pure-control-group">
 			<label for="pattern">Input file:</label>
-			<input type="file" name="pattern">
+			<div class="upload-btn-wrapper">
+				<button class="pure-button pure-button-secondary">Choose pattern</button>
+				<input type="file" name="pattern" accept="image/png" />
+			</div>
 		</div>
 
 		<div class="pure-control-group">
@@ -34,3 +42,17 @@
 	<input type="submit" class="pure-button" name="trim_pattern" value="Trim pattern">
 	<input type="submit" class="pure-button" name="clr_pattern" value="Clear pattern">
 </form>
+
+<h2>Download Pattern</h2>
+<form class="pure-form pure-form-stacked" method="get" action="/rest/pattern/raw">
+	<input type="submit" class="pure-button" value="Download">
+</form>
+
+<script>
+const pattern = document.getElementById("pattern");
+
+function pattern_available(availibility) {
+	document.querySelectorAll(availibility ? ".show_without_pattern" : ".show_with_pattern").forEach(function(element) { element.style.display = "none"; });
+	document.querySelectorAll(availibility ? ".show_with_pattern" : ".show_without_pattern").forEach(function(element) { element.style.display = ""; });
+}
+</script>

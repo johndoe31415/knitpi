@@ -27,12 +27,13 @@
 #include <stdbool.h>
 #include <time.h>
 #include "peripherals_gpio.h"
+#include "knitcore.h"
 
-typedef void (*sled_callback_t)(int position, bool belt_phase, bool left_to_right);
+typedef void (*sled_callback_t)(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 unsigned int sled_get_skipped_needles_cnt(void);
-void sled_set_callback(sled_callback_t callback);
+void sled_set_callback(struct server_state_t *server_state, sled_callback_t callback);
 void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 

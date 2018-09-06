@@ -29,10 +29,16 @@
 #include "pattern.h"
 #include "membuf.h"
 
+enum colorscheme_t {
+	COLSCHEME_RAW,
+	COLSCHEME_PRETTY,
+};
+
 struct png_write_options_t {
 	unsigned int pixel_width, pixel_height;
 	unsigned int grid_width;
 	uint32_t grid_color;
+	enum colorscheme_t color_scheme;
 };
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/

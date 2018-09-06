@@ -19,11 +19,8 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-from flask import Flask
-from flask_uwsgi_websocket import GeventWebSocket
+import werkzeug.routing
 
-app = Flask(__name__)
-websocket = GeventWebSocket(app)
-
-from knitui.Converters import LongConverter
-app.url_map.converters["long"] = LongConverter
+class LongConverter(werkzeug.routing.IntegerConverter):
+	"""Accepts also negative values."""
+	regex = r"-?\d+"

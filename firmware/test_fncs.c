@@ -330,14 +330,14 @@ static int run_test_debounce(int argc, char **argv) {
 	return 0;
 }
 
-static void sled_callback(int position, bool belt_phase, bool left_to_right) {
+static void print_sled_callback(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right) {
 	fprintf(stderr, "Sled at: %3d %s phase %d\n", position, left_to_right ? "->" : "<-", belt_phase);
 }
 
 static int run_test_sled(int argc, char **argv) {
 	printf("Testing sled positioning.\n");
 	all_peripherals_init();
-	sled_set_callback(sled_callback);
+	sled_set_callback(NULL, print_sled_callback);
 	start_debouncer_thread(sled_input);
 	start_gpio_thread(debouncer_input, true);
 	while (true) {
@@ -346,7 +346,7 @@ static int run_test_sled(int argc, char **argv) {
 	return 0;
 }
 
-static void sled_actuation_callback(int position, bool belt_phase, bool left_to_right) {
+static void single_sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right) {
 	uint8_t spi_data[] = { 0, 0 };
 
 	if (sled_before_needle_id(position, knit_needle_id, belt_phase, left_to_right)) {
@@ -362,7 +362,7 @@ static void sled_actuation_callback(int position, bool belt_phase, bool left_to_
 static int run_test_sled_actuate(int argc, char **argv) {
 	printf("Testing sled positioning and actuation.\n");
 	all_peripherals_init();
-	sled_set_callback(sled_actuation_callback);
+	sled_set_callback(NULL, single_sled_actuation_callback);
 	start_debouncer_thread(sled_input);
 	start_gpio_thread(debouncer_input, true);
 	spi_clear(SPI_74HC595, 2);

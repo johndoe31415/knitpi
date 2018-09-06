@@ -1,13 +1,25 @@
 .PHONY: test connect
 
-CFLAGS := -O3 -std=c11 -D_POSIX_C_SOURCE=199309L -D_XOPEN_SOURCE=500
+ARCH := $(shell uname -p)
+ifeq ($(ARCH),unknown)
+# Running on Raspberry Pi
+DEVELOPMENT := 0
+else
+DEVELOPMENT := 1
+endif
+
+
+CFLAGS := -O3 -std=c11 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500
 CFLAGS += -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wswitch
 #CFLAGS += -Wimplicit-fallthrough
 LDFLAGS := -pthread -lgpiod -lpng16
 
+ifeq ($(DEVELOPMENT),1)
 CFLAGS += -ggdb3 -fsanitize=address -fsanitize=undefined -fsanitize=leak -fno-omit-frame-pointer -D_FORTITY_SOURCE=2
+TEST_FLAGS += --no-hardware
+endif
 
-SPECIFIC_OBJS :=  test_fncs.o emit_pattern.o knitserver.o
+SPECIFIC_OBJS :=  test_fncs.o knitserver.o
 OBJS := \
 	argparse.o \
 	atomic.o \
@@ -15,6 +27,7 @@ OBJS := \
 	gpio_thread.o \
 	isleep.o \
 	json.o \
+	knitcore.o \
 	logging.o \
 	membuf.o \
 	needles.o \
@@ -31,7 +44,7 @@ OBJS := \
 	tokenizer.o \
 	tools.o
 
-BINARIES := test_fncs emit_pattern knitserver
+BINARIES := test_fncs knitserver
 
 all: $(BINARIES)
 
@@ -50,7 +63,7 @@ clean:
 	rm -f $(BINARIES)
 
 test: all
-	./knitserver --no-hardware -f -vvvvv socket
+	./knitserver $(TEST_FLAGS) -f -vvvvv socket
 
 connect:
 	socat - unix-connect:socket

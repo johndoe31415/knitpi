@@ -15,6 +15,24 @@
 	</div>
 </div>
 
+<div class="grids-example" class="show_with_connection" style="position: relative; top: -10px;">
+    <div class="pure-g">
+        <div class="pure-u-1-3">
+            <div class="l-box">
+                <h4>Pattern Size</h4>
+                <p id="pattern_size"></p>
+             </div>
+        </div>
+
+        <div class="pure-u-1-3">
+            <div class="l-box">
+                <h4>Pattern Position</h4>
+                <p id="pattern_pos"></p>
+             </div>
+        </div>
+    </div>
+</div>
+
 <div>
 	<img src="/static/img/needles.png" /><br />
 	<img src="/static/img/arrow.png" id="carriage_position_arrow" style="position: relative; left: 0px; top: -10px" />
@@ -40,12 +58,24 @@ const active_row_bar = document.getElementById("active_row_bar");
 const play_button = document.getElementById("play_button");
 const repeat_button = document.getElementById("repeat_button");
 const pattern = document.getElementById("pattern");
+const pattern_size = document.getElementById("pattern_size");
+const pattern_pos = document.getElementById("pattern_pos");
 let last_status = null;
 
 const row_sound = (localStorage.getItem("setting_row_sound") != 0) ? new Audio("/static/sound/ding.mp3") : null;
 
 const websocket_uri = "ws://" + window.location.host + "/ws/status";
 let websocket = null;
+
+function offset_to_needle(offset) {
+	if ((offset >= 0) && (offset < 100)) {
+		return "Yellow " + (100 - offset);
+	} else if ((offset >= 0) && (offset < 200)) {
+		return "Green " + (offset - 99);
+	} else {
+		return "{" + offset + "}";
+	}
+}
 
 function wsevent_onmessage(event) {
 	const msg = JSON.parse(event.data);
@@ -87,6 +117,13 @@ function wsevent_onmessage(event) {
 		if ((row_sound != null) && (last_status != null) && (last_status["pattern_row"] != msg["pattern_row"])) {
 			row_sound.play();
 		}
+
+		const real_width = msg["pattern_max_x"] - msg["pattern_min_x"] + 1;
+		const real_height = msg["pattern_max_y"] - msg["pattern_min_y"] + 1;
+		pattern_size.innerHTML = real_width + " x " + real_height;
+
+		const real_offset_x = msg["pattern_min_x"] + msg["pattern_offset"];
+		pattern_pos.innerHTML = offset_to_needle(real_offset_x) + " - " + offset_to_needle(real_offset_x + real_width - 1);
 
 		last_status = msg;
 	} else {
