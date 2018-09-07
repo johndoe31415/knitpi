@@ -50,7 +50,7 @@ struct json_dict_entry_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void json_print_dict(FILE *f, const struct json_dict_entry_t *entries);
-void json_respond_simple(FILE *f, const char *msg_type, const char *message, ...);
+void __attribute__ ((format (printf, 3, 4))) json_respond_simple(FILE *f, const char *msg_type, const char *message, ...);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

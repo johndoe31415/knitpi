@@ -39,7 +39,7 @@ I've drawn them with CircuitMaker and the [CircuitMaker project page can be
 found here](https://circuitmaker.com/Projects/Details/johndoe31415/KnittingPi).
 
 
-## Included third-party code
+## Included third-party code/data
 knitpi uses third-party code that is included in the tree for ease of use. In
 particular, it uses:
 
@@ -47,6 +47,11 @@ particular, it uses:
     It is licensed under the MIT license.
   * The [pure.css framework](https://github.com/pure-css/pure). It is licensed
     under the Yahoo! Inc BSD license.
+  * The ["pattern finished" chime](https://freesound.org/people/JFRecords/sounds/420512/)
+	is licensed under the CC-BY 3.0 license and was downloaded from
+	[freesound.org](https://www.freesound.org). It was created by
+	[JFRecords](https://freesound.org/people/JFRecords/) under the original
+    name "vMax Bells".
 
 My sincere thanks go out to both of these.
 

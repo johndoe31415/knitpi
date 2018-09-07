@@ -35,7 +35,7 @@ enum loglvl_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void set_loglevel(enum loglvl_t new_loglevel);
-void logmsg(enum loglvl_t msg_loglvl, const char *msg, ...);
+void __attribute__ ((format (printf, 2, 3))) logmsg(enum loglvl_t msg_loglvl, const char *msg, ...);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

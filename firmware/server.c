@@ -116,6 +116,9 @@ static enum execution_state_t handler_setrow(struct client_thread_data_t *worker
 static enum execution_state_t handler_setoffset(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_hwmock(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+
+static bool determine_movement_direction(struct client_thread_data_t *worker, bool send_error_response);
 
 static struct command_t known_commands[] = {
 	{
@@ -188,7 +191,16 @@ static struct command_t known_commands[] = {
 		.handler = handler_setrepeatmode,
 		.arg_count = 1,
 		.arguments = {
-			{ .name = "[oneshot|repeat]/str" },
+			{ .name = "[oneshot|repeat|manual]/str" },
+		},
+	},
+	{
+		.cmdname = "hwmock",
+		.handler = handler_hwmock,
+		.arg_count = 2,
+		.arguments = {
+			{ .name = "[setpos]/str" },
+			{ .name = "parameter/int", .parser = argument_parse_int },
 		},
 	},
 };
@@ -206,6 +218,7 @@ static const char *repeat_mode_to_str(enum repeat_mode_t mode) {
 	switch (mode) {
 		case RPTMODE_ONESHOT:	return "oneshot";
 		case RPTMODE_REPEAT:	return "repeat";
+		case RPTMODE_MANUAL:	return "manual";
 	}
 	return "unknown";
 }
@@ -216,8 +229,7 @@ static enum execution_state_t handler_status(struct client_thread_data_t *worker
 		JSON_DICTENTRY_STR("knitting_mode", knitting_mode_to_str(worker->server_state->knitting_mode)),
 		JSON_DICTENTRY_STR("repeat_mode", repeat_mode_to_str(worker->server_state->repeat_mode)),
 		JSON_DICTENTRY_BOOL("carriage_position_valid", worker->server_state->carriage_position_valid),
-		JSON_DICTENTRY_BOOL("belt_phase", worker->server_state->belt_phase),
-		JSON_DICTENTRY_BOOL("direction_left_to_right", worker->server_state->direction_left_to_right),
+		JSON_DICTENTRY_BOOL("even_rows_left_to_right", worker->server_state->even_rows_left_to_right),
 		JSON_DICTENTRY_INT("carriage_position", worker->server_state->carriage_position),
 		JSON_DICTENTRY_INT("skipped_needles_cnt", sled_get_skipped_needles_cnt()),
 		JSON_DICTENTRY_INT("pattern_row", worker->server_state->pattern_row),
@@ -239,6 +251,15 @@ static enum execution_state_t handler_statuswait(struct client_thread_data_t *wo
 		isleep(&worker->server_state->event_notification, tokens->token[1].integer);
 	}
 	return handler_status(worker, tokens, membuf);
+}
+
+static void center_pattern(struct client_thread_data_t *worker) {
+	int actual_width = worker->server_state->pattern->max_x - worker->server_state->pattern->min_x + 1;
+	if (actual_width > 0) {
+		worker->server_state->pattern_offset = (200 / 2) - (actual_width / 2);
+	} else {
+		worker->server_state->pattern_offset = 0;
+	}
 }
 
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
@@ -270,7 +291,9 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 			worker->server_state->pattern = merge_pattern;
 		}
 	}
-	worker->server_state->pattern_offset = 0;
+
+	worker->server_state->knitting_mode = MODE_OFF;
+	center_pattern(worker);
 	sled_update(worker->server_state);
 	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New pattern set.");
@@ -323,12 +346,7 @@ static enum execution_state_t handler_editpattern(struct client_thread_data_t *w
 			json_respond_simple(worker->f, "error", "Cannot center without pattern.");
 			return FAILED;
 		}
-		int actual_width = worker->server_state->pattern->max_x - worker->server_state->pattern->min_x + 1;
-		if (actual_width > 0) {
-			worker->server_state->pattern_offset = (200 / 2) - (actual_width / 2);
-		} else {
-			worker->server_state->pattern_offset = 0;
-		}
+		center_pattern(worker);
 		logmsg(LLVL_DEBUG, "(%d) Centered %d x %d pattern with minmax (%d, %d), (%d, %d) to %d", worker->client_id, worker->server_state->pattern->width, worker->server_state->pattern->height, worker->server_state->pattern->min_x, worker->server_state->pattern->min_y, worker->server_state->pattern->max_x, worker->server_state->pattern->max_y, worker->server_state->pattern_offset);
 	} else {
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
@@ -342,11 +360,17 @@ static enum execution_state_t handler_editpattern(struct client_thread_data_t *w
 
 static enum execution_state_t handler_setrow(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if ((worker->server_state->pattern) && (tokens->token[1].integer >= 0) && (tokens->token[1].integer < worker->server_state->pattern->height)) {
+		int current_row = worker->server_state->pattern_row;
 		worker->server_state->pattern_row = tokens->token[1].integer;
-		sled_update(worker->server_state);
-		isleep_interrupt(&worker->server_state->event_notification);
-		json_respond_simple(worker->f, "ok", "New row set.");
-		return SUCCESS;
+		if (determine_movement_direction(worker, true)) {
+			sled_update(worker->server_state);
+			isleep_interrupt(&worker->server_state->event_notification);
+			json_respond_simple(worker->f, "ok", "New row set.");
+			return SUCCESS;
+		} else {
+			worker->server_state->pattern_row = current_row;
+			return FAILED;
+		}
 	} else {
 		json_respond_simple(worker->f, "error", "No pattern set or given index %d out of bounds for pattern.", tokens->token[1].integer);
 		return FAILED;
@@ -361,32 +385,45 @@ static enum execution_state_t handler_setoffset(struct client_thread_data_t *wor
 	return SUCCESS;
 }
 
+static bool determine_movement_direction(struct client_thread_data_t *worker, bool send_error_response) {
+	if (!worker->server_state->pattern) {
+		logmsg(LLVL_WARN, "(%d) Cannot determine movement direction without a pattern set.", worker->client_id);
+		if (send_error_response) {
+			json_respond_simple(worker->f, "error", "Cannot determine movement direction without a pattern set.");
+		}
+		return false;
+	}
+
+	if (!worker->server_state->carriage_position_valid) {
+		logmsg(LLVL_WARN, "(%d) Cannot determine movement direction without a valid carriage position.", worker->client_id);
+		if (send_error_response) {
+			json_respond_simple(worker->f, "error", "Cannot determine movement direction without a valid carriage position.");
+		}
+		return false;
+	}
+
+	if (worker->server_state->carriage_position <= worker->server_state->pattern->min_x + worker->server_state->pattern_offset) {
+		/* We're left of pattern */
+		worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) == 0);
+	} else if (worker->server_state->carriage_position >= worker->server_state->pattern->max_x + worker->server_state->pattern_offset) {
+		/* We're right of pattern */
+		worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) != 0);
+	} else {
+		logmsg(LLVL_ERROR, "(%d) Cannot determine movement direction at this carriage postion: carriage at %d and pattern from %d to %d.", worker->client_id, worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
+		if (send_error_response) {
+			json_respond_simple(worker->f, "error", "Cannot determine movement direction at this carriage postion: carriage at %d and pattern from %d to %d.", worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
+		}
+		return false;
+	}
+
+	return true;
+}
+
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if (!strcasecmp(tokens->token[1].string, "on")) {
-		if (!worker->server_state->pattern) {
-			json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without pattern.");
-			logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without pattern.");
-			return FAILED;
-		}
-
-		if (worker->server_state->carriage_position_valid) {
-			if (worker->server_state->carriage_position <= worker->server_state->pattern->min_x + worker->server_state->pattern_offset) {
-				/* We're left of pattern */
-				worker->server_state->knitting_mode = MODE_ON;
-				worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) == 0);
-			} else if (worker->server_state->carriage_position >= worker->server_state->pattern->max_x + worker->server_state->pattern_offset) {
-				/* We're right of pattern */
-				worker->server_state->knitting_mode = MODE_ON;
-				worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) != 0);
-			} else {
-				/* We're in the middle of the pattern */
-				json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without knowing if movement left or right: carriage at %d and pattern from %d to %d.", worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
-				logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without valid position.");
-				return FAILED;
-			}
+		if (determine_movement_direction(worker, true)) {
+			worker->server_state->knitting_mode = MODE_ON;
 		} else {
-			json_respond_simple(worker->f, "error", "Cannot turn on knitting mode without valid position.");
-			logmsg(LLVL_ERROR, "(%d) Refusing to turn on knitting mode without valid position.");
 			return FAILED;
 		}
 	} else if (!strcasecmp(tokens->token[1].string, "off")) {
@@ -406,6 +443,8 @@ static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t 
 		worker->server_state->repeat_mode = RPTMODE_ONESHOT;
 	} else if (!strcasecmp(tokens->token[1].string, "repeat")) {
 		worker->server_state->repeat_mode = RPTMODE_REPEAT;
+	} else if (!strcasecmp(tokens->token[1].string, "manual")) {
+		worker->server_state->repeat_mode = RPTMODE_MANUAL;
 	} else {
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
 		return FAILED;
@@ -415,6 +454,25 @@ static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t 
 	json_respond_simple(worker->f, "ok", "New repeat mode: %s", repeat_mode_to_str(worker->server_state->repeat_mode));
 	return SUCCESS;
 }
+
+static enum execution_state_t handler_hwmock(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	if (!pgm_opts->no_hardware) {
+		json_respond_simple(worker->f, "error", "Hardware mock commands are disallowed when actual hardware is used.");
+		return FAILED;
+	}
+	if (!strcasecmp(tokens->token[1].string, "setpos")) {
+		worker->server_state->carriage_position_valid = true;
+		worker->server_state->carriage_position = tokens->token[2].integer;
+		json_respond_simple(worker->f, "ok", "Set position.");
+	} else {
+		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
+		return FAILED;
+	}
+	sled_update(worker->server_state);
+	isleep_interrupt(&worker->server_state->event_notification);
+	return SUCCESS;
+}
+
 
 static enum execution_state_t parse_execute_command(struct client_thread_data_t *worker, char *line) {
 	enum execution_state_t result = SUCCESS;

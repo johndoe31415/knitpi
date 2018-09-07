@@ -118,3 +118,6 @@ class ServerConnection(object):
 
 	def set_repeat_mode(self, repeat_mode, parse = False):
 		return self._execute("setrepeatmode %s" % (repeat_mode), parse = parse)
+
+	def mock_command(self, cmd, parameter, parse = False):
+		return self._execute("hwmock %s %d" % (cmd, parameter), parse = parse)

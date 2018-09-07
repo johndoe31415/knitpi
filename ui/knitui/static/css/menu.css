@@ -15,6 +15,10 @@ button.btype-connerr {
 	background-image: url("/static/img/icon_conerr.svg");
 }
 
+button.btype-manual {
+	background-image: url("/static/img/icon_manual.svg");
+}
+
 button.btype-oneshot {
 	background-image: url("/static/img/icon_oneshot.svg");
 }
@@ -45,6 +49,22 @@ button.btype-eye {
 
 button.btype-skipcnt {
 	background-image: url("/static/img/icon_skipcnt.svg");
+}
+
+button.btype-checkmark {
+	background-image: url("/static/img/icon_ok.svg");
+}
+
+button.btype-warning {
+	background-image: url("/static/img/icon_warn.svg");
+}
+
+button.btype-carriage-left {
+	background-image: url("/static/img/icon_carriage_left.svg");
+}
+
+button.btype-carriage-right {
+	background-image: url("/static/img/icon_carriage_right.svg");
 }
 
 button.menubutton:hover {

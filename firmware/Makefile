@@ -8,7 +8,6 @@ else
 DEVELOPMENT := 1
 endif
 
-
 CFLAGS := -O3 -std=c11 -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=500
 CFLAGS += -Wall -Wmissing-prototypes -Wstrict-prototypes -Werror=implicit-function-declaration -Werror=format -Wshadow -Wswitch
 #CFLAGS += -Wimplicit-fallthrough
@@ -16,7 +15,7 @@ LDFLAGS := -pthread -lgpiod -lpng16
 
 ifeq ($(DEVELOPMENT),1)
 CFLAGS += -ggdb3 -fsanitize=address -fsanitize=undefined -fsanitize=leak -fno-omit-frame-pointer -D_FORTITY_SOURCE=2
-TEST_FLAGS += --no-hardware
+TEST_FLAGS += --no-hardware -v
 endif
 
 SPECIFIC_OBJS :=  test_fncs.o knitserver.o
@@ -63,7 +62,7 @@ clean:
 	rm -f $(BINARIES)
 
 test: all
-	./knitserver $(TEST_FLAGS) -f -vvvvv socket
+	./knitserver $(TEST_FLAGS) -f -vvv socket
 
 connect:
 	socat - unix-connect:socket

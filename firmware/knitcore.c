@@ -50,27 +50,37 @@
 #include "server.h"
 #include "pgmopts.h"
 
-void sled_update(struct server_state_t *server_state) {
+static void deactivate_solenoids(void) {
 	if (pgm_opts->no_hardware) {
 		return;
 	}
+	gpio_inactive(GPIO_74HC595_OE);
+}
 
+static void activate_solenoids(void) {
+	if (pgm_opts->no_hardware) {
+		return;
+	}
+	gpio_active(GPIO_74HC595_OE);
+}
+
+void sled_update(struct server_state_t *server_state) {
 	if (server_state->pattern == NULL) {
-		gpio_inactive(GPIO_74HC595_OE);
+		deactivate_solenoids();
 		server_state->knitting_mode = MODE_OFF;
 		return;
 	}
 
 	if (!server_state->carriage_position_valid) {
-		gpio_inactive(GPIO_74HC595_OE);
+		deactivate_solenoids();
 		server_state->knitting_mode = MODE_OFF;
 		return;
 	}
 
 	if (server_state->knitting_mode == MODE_ON) {
-		gpio_active(GPIO_74HC595_OE);
+		activate_solenoids();
 	} else {
-		gpio_inactive(GPIO_74HC595_OE);
+		deactivate_solenoids();
 	}
 
 
@@ -81,12 +91,17 @@ void sled_update(struct server_state_t *server_state) {
 			uint8_t color = pattern_get_color(server_state->pattern, knit_needle_id - server_state->pattern_offset, server_state->pattern_row);
 			if (color != 0) {
 				if (sled_before_needle_id(server_state->carriage_position, knit_needle_id, server_state->belt_phase, server_state->direction_left_to_right)) {
+					char needle_name[32];
+					needle_pos_to_text(needle_name, knit_needle_id);
+					logmsg(LLVL_TRACE, "At %d actuating %s", server_state->carriage_position, needle_name);
 					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, knit_needle_id);
 				}
 			}
 		}
 	}
-	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
+	if (!pgm_opts->no_hardware) {
+		spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
+	}
 }
 
 static void next_row(struct server_state_t *server_state) {
@@ -111,16 +126,19 @@ static void check_for_next_row(struct server_state_t *server_state) {
 	if (server_state->knitting_mode != MODE_ON) {
 		return;
 	}
+	if (server_state->repeat_mode == RPTMODE_MANUAL) {
+		return;
+	}
 
 	bool is_even_row = (server_state->pattern_row % 2) == 0;
 	if (server_state->even_rows_left_to_right == is_even_row) {
 		/* Waiting for position right of pattern */
-		int rightmost_needle = server_state->pattern->max_x + server_state->pattern_offset + 5;
+		int rightmost_needle = server_state->pattern->max_x + server_state->pattern_offset + 32;
 		if (server_state->carriage_position >= rightmost_needle) {
 			next_row(server_state);
 		}
 	} else {
-		int leftmost_needle = server_state->pattern->min_x + server_state->pattern_offset - 5;
+		int leftmost_needle = server_state->pattern->min_x + server_state->pattern_offset - 32;
 		if (server_state->carriage_position <= leftmost_needle) {
 			next_row(server_state);
 		}
@@ -138,53 +156,4 @@ void sled_actuation_callback(struct server_state_t *server_state, int position, 
 
 	sled_update(server_state);
 	isleep_interrupt(&server_state->event_notification);
-
-
-#if 0
-
-	if (last_direction != left_to_right) {
-		/* Direction reversed. */
-		if (stitch_count > 30) {
-			current_row++;
-			stitch_count = 0;
-			printf("Next row: %d\n", current_row);
-			if (current_row < pnm_file->height) {
-				pnmfile_dump_row(pnm_file, current_row);
-			} else {
-				printf("======================================================================================================\n");
-			}
-		}
-	}
-
-	uint8_t spi_data[] = { 0, 0 };
-	if ((current_row >= 0) && (current_row < pnm_file->height)) {
-		stitch_count++;
-		const uint8_t *row_data = pnmfile_row(pnm_file, current_row);
-
-
-		for (int knit_needle_id = 0; knit_needle_id < 200; knit_needle_id++) {
-			if (row_data[knit_needle_id]) {
-				if (sled_before_needle_id(position, knit_needle_id, belt_phase, left_to_right)) {
-					actuate_solenoids_for_needle(spi_data, belt_phase, knit_needle_id);
-				}
-			}
-		}
-	} else if ((position == 0) && (current_row == -1)) {
-		current_row = 0;
-		printf("Starting pattern.\n");
-		pnmfile_dump_row(pnm_file, current_row);
-	}
-
-	int active_solenoid_cnt = 0;
-	for (int i = 0; i < 2; i++) {
-		for (int j = 0; j < 8; j++) {
-			if ((spi_data[i] >> j) & 1) {
-				active_solenoid_cnt++;
-			}
-		}
-	}
-	printf("Serving row %d for %d (%d stitches, %d active solenoids)\n", current_row, position, stitch_count, active_solenoid_cnt);
-	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
-	last_direction = left_to_right;
-#endif
 }

@@ -38,6 +38,7 @@ enum knitting_mode_t {
 enum repeat_mode_t {
 	RPTMODE_ONESHOT,
 	RPTMODE_REPEAT,
+	RPTMODE_MANUAL,
 };
 
 struct server_state_t {
