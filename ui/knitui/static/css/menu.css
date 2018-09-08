@@ -11,6 +11,11 @@ button.menubutton {
 	vertical-align: text-bottom;
 }
 
+button.displayonly {
+	background-color: #fff;
+	border: 1px solid #aaa;
+}
+
 button.btype-connerr {
 	background-image: url("/static/img/icon_conerr.svg");
 }
@@ -35,14 +40,6 @@ button.btype-stop {
 	background-image: url("/static/img/icon_stop.svg");
 }
 
-button.btype-prev {
-	background-image: url("/static/img/icon_prev.svg");
-}
-
-button.btype-next {
-	background-image: url("/static/img/icon_next.svg");
-}
-
 button.btype-eye {
 	background-image: url("/static/img/icon_eye.svg");
 }
@@ -57,6 +54,10 @@ button.btype-checkmark {
 
 button.btype-warning {
 	background-image: url("/static/img/icon_warn.svg");
+}
+
+button.btype-carriage-unknown {
+	background-image: url("/static/img/icon_carriage_unknown.svg");
 }
 
 button.btype-carriage-left {

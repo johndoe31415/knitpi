@@ -330,8 +330,8 @@ static int run_test_debounce(int argc, char **argv) {
 	return 0;
 }
 
-static void print_sled_callback(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right) {
-	fprintf(stderr, "Sled at: %3d %s phase %d\n", position, left_to_right ? "->" : "<-", belt_phase);
+static void print_sled_callback(struct server_state_t *server_state, int position, bool belt_phase) {
+	fprintf(stderr, "Sled at: %3d phase %d\n", position, belt_phase);
 }
 
 static int run_test_sled(int argc, char **argv) {
@@ -346,8 +346,12 @@ static int run_test_sled(int argc, char **argv) {
 	return 0;
 }
 
-static void single_sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right) {
+static void single_sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase) {
 	uint8_t spi_data[] = { 0, 0 };
+	static int last_position = 0;
+
+	bool left_to_right = last_position < position;
+	last_position = position;
 
 	if (sled_before_needle_id(position, knit_needle_id, belt_phase, left_to_right)) {
 		actuate_solenoids_for_needle(spi_data, belt_phase, knit_needle_id);

@@ -64,6 +64,10 @@ static void activate_solenoids(void) {
 	gpio_active(GPIO_74HC595_OE);
 }
 
+static bool is_direction_left_to_right(const struct server_state_t *server_state) {
+	return server_state->even_rows_left_to_right == ((server_state->pattern_row % 2) == 0);
+}
+
 void sled_update(struct server_state_t *server_state) {
 	if (server_state->pattern == NULL) {
 		deactivate_solenoids();
@@ -87,10 +91,12 @@ void sled_update(struct server_state_t *server_state) {
 
 	uint8_t spi_data[] = { 0, 0 };
 	if ((server_state->pattern_row >= 0) && (server_state->pattern_row < server_state->pattern->height)) {
+		bool direction_left_to_right = is_direction_left_to_right(server_state);
 		for (int knit_needle_id = 0; knit_needle_id < 200; knit_needle_id++) {
 			uint8_t color = pattern_get_color(server_state->pattern, knit_needle_id - server_state->pattern_offset, server_state->pattern_row);
 			if (color != 0) {
-				if (sled_before_needle_id(server_state->carriage_position, knit_needle_id, server_state->belt_phase, server_state->direction_left_to_right)) {
+
+				if (sled_before_needle_id(server_state->carriage_position, knit_needle_id, server_state->belt_phase, direction_left_to_right)) {
 					char needle_name[32];
 					needle_pos_to_text(needle_name, knit_needle_id);
 					logmsg(LLVL_TRACE, "At %d actuating %s", server_state->carriage_position, needle_name);
@@ -105,17 +111,22 @@ void sled_update(struct server_state_t *server_state) {
 }
 
 static void next_row(struct server_state_t *server_state) {
-	if (server_state->pattern_row + 1 < server_state->pattern->height) {
-		server_state->pattern_row++;
-	} else {
-		server_state->pattern_row = 0;
-		if (server_state->repeat_mode == RPTMODE_ONESHOT) {
-			server_state->knitting_mode = MODE_OFF;
+	if (server_state->repeat_mode != RPTMODE_MANUAL) {
+		if (server_state->pattern_row + 1 < server_state->pattern->height) {
+			server_state->pattern_row++;
 		} else {
-			if ((server_state->pattern->height % 2) == 1) {
-				server_state->even_rows_left_to_right = !server_state->even_rows_left_to_right;
+			server_state->pattern_row = 0;
+			if (server_state->repeat_mode == RPTMODE_ONESHOT) {
+				server_state->knitting_mode = MODE_OFF;
+			} else {
+				if ((server_state->pattern->height % 2) == 1) {
+					server_state->even_rows_left_to_right = !server_state->even_rows_left_to_right;
+				}
 			}
 		}
+	} else {
+		/* Do not advance row, but inverse direction in manual mode */
+		server_state->even_rows_left_to_right = !server_state->even_rows_left_to_right;
 	}
 }
 
@@ -124,9 +135,6 @@ static void check_for_next_row(struct server_state_t *server_state) {
 		return;
 	}
 	if (server_state->knitting_mode != MODE_ON) {
-		return;
-	}
-	if (server_state->repeat_mode == RPTMODE_MANUAL) {
 		return;
 	}
 
@@ -145,13 +153,12 @@ static void check_for_next_row(struct server_state_t *server_state) {
 	}
 }
 
-void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase, bool direction_left_to_right) {
+void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase) {
 	server_state->carriage_position = position;
 	server_state->belt_phase = belt_phase;
 	if (server_state->carriage_position_valid) {
 		check_for_next_row(server_state);
 	}
-	server_state->direction_left_to_right = direction_left_to_right;
 	server_state->carriage_position_valid = true;
 
 	sled_update(server_state);

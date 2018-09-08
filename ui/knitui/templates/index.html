@@ -1,38 +1,38 @@
 <%inherit file="base.html"/>
-<%block name="title">Status</%block>
+<%block name="title">Knitting</%block>
 
 <div style="margin-bottom: 20px">
 	<div class="show_without_connection" style="display:none">
 		<img src="/static/img/icon_connerr.svg" id="connection_error">
 	</div>
 	<div class="show_with_connection" style="display:none">
-		<button title="Carriage position calibration" class="menubutton btype-warning" id="carriage_pos_button"></button>
-		<button title="Start/stop knitting" class="menubutton btype-play" onclick="action_stop_play()" id="play_button" />
-		<button title="Carriage movement" class="menubutton btype-carriage-left" id="carriage_direction_button"></button>
-		<button title="Repeat pattern" class="menubutton btype-repeat" onclick="action_repeat_oneshot()" id="repeat_button" />
-		<button title="Hide bar" onmousedown="action_hide_bar(true)" onmouseup="action_hide_bar(false)" class="menubutton btype-eye" />
-		<button title="Previous row" onclick="action_row_prev()" class="menubutton btype-prev" />
-		<button title="Next row" onclick="action_row_next()" class="menubutton btype-next" />
-		<button title="Reset skipped needle count" class="menubutton btype-skipcnt" id="skipped_needles_cnt"></button>
+		<div class="pure-g">
+			<div class="pure-u-1-3">
+				<button title="Start/stop knitting" class="menubutton btype-play" onclick="action_stop_play()" id="play_button" />
+				<button title="Repeat pattern" class="menubutton btype-repeat" onclick="action_repeat_oneshot()" id="repeat_button" />
+				<button title="Hide bar" onmousedown="action_hide_bar(true)" onmouseup="action_hide_bar(false)" class="menubutton btype-eye" />
+			</div>
+			<div class="pure-u-1-3">
+				<button class="menubutton displayonly btype-warning" id="carriage_pos_button" disabled="true"></button>
+				<button class="menubutton displayonly btype-carriage-unknown" id="carriage_direction_button" disabled="true"></button>
+				<button class="menubutton displayonly btype-skipcnt" id="skipped_needles_cnt" disabled="true"></button>
+			</div>
+		</div>
 	</div>
 </div>
 
-<div class="grids-example" class="show_with_connection" style="position: relative; top: -10px;">
-    <div class="pure-g">
-        <div class="pure-u-1-3">
-            <div class="l-box">
-                <h4>Pattern Size</h4>
-                <p id="pattern_size"></p>
-             </div>
-        </div>
+<div class="show_with_connection" style="position: relative; top: -10px;">
+	<div class="pure-g">
+		<div class="pure-u-1-3">
+			<h4>Pattern Size</h4>
+			<p id="pattern_size"></p>
+		</div>
 
-        <div class="pure-u-1-3">
-            <div class="l-box">
-                <h4>Pattern Position</h4>
-                <p id="pattern_pos"></p>
-             </div>
-        </div>
-    </div>
+		<div class="pure-u-1-3">
+			<h4>Pattern Position</h4>
+			<p id="pattern_pos"></p>
+		</div>
+	</div>
 </div>
 
 <div>
@@ -81,6 +81,11 @@ function offset_to_needle(offset) {
 	}
 }
 
+function set_one_class_of(element, classname, classlist) {
+	classlist.forEach(function(old_classname) { element.classList.replace(old_classname, classname); });
+	element.classList.add(classname);
+}
+
 function wsevent_onmessage(event) {
 	const msg = JSON.parse(event.data);
 	if (msg["msg_type"] == "connection_error") {
@@ -88,32 +93,13 @@ function wsevent_onmessage(event) {
 		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = "none"; });
 		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = ""; });
 	} else if (msg["msg_type"] == "status") {
-		if (msg["knitting_mode"] == "off") {
-			play_button.classList.replace("btype-play", "btype-stop");
-		} else if (msg["knitting_mode"] == "on") {
-			play_button.classList.replace("btype-stop", "btype-play");
-		} else {
-			play_button.classList.remove("btype-stop");
-			play_button.classList.remove("btype-play");
-		}
-		if (msg["repeat_mode"] == "oneshot") {
-			repeat_button.classList.replace("btype-repeat", "btype-oneshot");
-			repeat_button.classList.replace("btype-manual", "btype-oneshot");
-		} else if (msg["repeat_mode"] == "repeat") {
-			repeat_button.classList.replace("btype-oneshot", "btype-repeat");
-			repeat_button.classList.replace("btype-manual", "btype-repeat");
-		} else if (msg["repeat_mode"] == "manual") {
-			repeat_button.classList.replace("btype-oneshot", "btype-manual");
-			repeat_button.classList.replace("btype-repeat", "btype-manual");
-		} else {
-			repeat_button.classList.remove("btype-oneshot");
-			repeat_button.classList.remove("btype-repeat");
-			repeat_button.classList.remove("btype-manual");
-		}
+		set_one_class_of(play_button, (msg["knitting_mode"] == "off") ? "btype-stop" : "btype-play", [ "btype-stop", "btype-play" ]);
+		set_one_class_of(repeat_button, "btype-" + msg["repeat_mode"], [ "btype-oneshot", "btype-repeat", "btype-manual" ]);
 
 		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = ""; });
 		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = "none"; });
 		skipped_needles_cnt.innerHTML = msg["skipped_needles_cnt"];
+		skipped_needles_cnt.title = msg["skipped_needles_cnt"] + " needles were skipped";
 
 		ypos = -10 + (msg["pattern_row"] * 5);
 		active_row_bar.style.top = ypos + "px";
@@ -133,23 +119,26 @@ function wsevent_onmessage(event) {
 				row_sound.play();
 			}
 			carriage_position_arrow.style.display = "";
-			carriage_pos_button.classList.replace("btype-warning", "btype-checkmark");
+			set_one_class_of(carriage_pos_button, "btype-checkmark", [ "btype-checkmark", "btype-warning" ]);
+			carriage_pos_button.title = "Carriage position calibrated";
 		} else {
 			carriage_position_arrow.style.display = "none";
-			carriage_pos_button.classList.replace("btype-checkmark", "btype-warning");
+			set_one_class_of(carriage_pos_button, "btype-warning", [ "btype-checkmark", "btype-warning" ]);
+			carriage_pos_button.title = "Carriage position not calibrated; move to very left or right side.";
 		}
 
 		if (msg["carriage_position_valid"] && (msg["knitting_mode"] == "on")) {
-			carriage_direction_button.style.display = "";
-
 			const is_even_row = ((msg["pattern_row"] % 2) == 0);
 			if (msg["even_rows_left_to_right"] == is_even_row) {
-				carriage_direction_button.classList.replace("btype-carriage-left", "btype-carriage-right");
+				set_one_class_of(carriage_direction_button, "btype-carriage-right", [ "btype-carriage-unknown", "btype-carriage-right", "btype-carriage-left" ]);
+				carriage_direction_button.title = "Carriage moves from left to right";
 			} else {
-				carriage_direction_button.classList.replace("btype-carriage-right", "btype-carriage-left");
+				set_one_class_of(carriage_direction_button, "btype-carriage-left", [ "btype-carriage-unknown", "btype-carriage-right", "btype-carriage-left" ]);
+				carriage_direction_button.title = "Carriage moves from right to left";
 			}
 		} else {
-			carriage_direction_button.style.display = "none";
+			set_one_class_of(carriage_direction_button, "btype-carriage-unknown", [ "btype-carriage-unknown", "btype-carriage-right", "btype-carriage-left" ]);
+			carriage_direction_button.title = "Carriage travel direction unknown";
 		}
 
 		const real_width = msg["pattern_max_x"] - msg["pattern_min_x"] + 1;
@@ -184,6 +173,8 @@ function action_stop_play() {
 	if (last_status != null) {
 		let uri = null;
 		if (last_status["knitting_mode"] == "on") {
+			/* Set knitting mode to off so we don't get the finsihed sound */
+			last_status["knitting_mode"] = "off";
 			uri = "/rest/set_knitting_mode/off";
 		} else if (last_status["knitting_mode"] == "off") {
 			uri = "/rest/set_knitting_mode/on";
@@ -250,14 +241,6 @@ function action_offset_inc(value) {
 		request.open("POST", "/rest/pattern_offset/" + new_offset, true);
 		request.send();
 	}
-}
-
-function action_row_next() {
-	action_row_inc(1);
-}
-
-function action_row_prev() {
-	action_row_inc(-1);
 }
 
 function action_hide_bar(hide_bar) {

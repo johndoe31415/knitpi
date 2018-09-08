@@ -104,7 +104,7 @@ void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 	if (sled_callback) {
 		int sled_pos = rotary_get_position();
 		if ((sled_pos != last_reported_position) && pos_valid) {
-			sled_callback(server_state, sled_pos, belt_phase, sled_pos > last_reported_position);
+			sled_callback(server_state, sled_pos, belt_phase);
 			last_reported_position = sled_pos;
 		}
 	}

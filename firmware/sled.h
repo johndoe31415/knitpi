@@ -29,7 +29,7 @@
 #include "peripherals_gpio.h"
 #include "knitcore.h"
 
-typedef void (*sled_callback_t)(struct server_state_t *server_state, int position, bool belt_phase, bool left_to_right);
+typedef void (*sled_callback_t)(struct server_state_t *server_state, int position, bool belt_phase);
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 unsigned int sled_get_skipped_needles_cnt(void);

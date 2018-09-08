@@ -48,7 +48,6 @@ struct server_state_t {
 	bool even_rows_left_to_right;
 	bool carriage_position_valid;
 	bool belt_phase;
-	bool direction_left_to_right;
 	int32_t carriage_position;
 	int32_t pattern_row;
 	int32_t pattern_offset;
@@ -63,7 +62,7 @@ struct server_state_t {
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void sled_update(struct server_state_t *server_state);
-void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase, bool direction_left_to_right);
+void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

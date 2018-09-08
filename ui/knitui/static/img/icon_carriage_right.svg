@@ -157,8 +157,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="7.919596"
-     inkscape:cx="9.7852641"
-     inkscape:cy="22.786241"
+     inkscape:cx="7.7416593"
+     inkscape:cy="22.248873"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -214,5 +214,17 @@
            inkscape:connector-curvature="0" />
       </g>
     </g>
+    <circle
+       style="opacity:1;fill:none;fill-opacity:1;stroke:#d35400;stroke-width:0.19666462;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path901"
+       cx="6.3499999"
+       cy="293.3454"
+       r="0.56925648" />
+    <circle
+       style="opacity:1;fill:#bdc3c7;fill-opacity:1;stroke:none;stroke-width:0.08444692;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="path901-9"
+       cx="6.3499999"
+       cy="293.3454"
+       r="0.24443622" />
   </g>
 </svg>

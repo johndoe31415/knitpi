@@ -136,8 +136,12 @@ class Controller(object):
 					"text":			str(server_connection.last_error),
 				}
 				ws.send(json.dumps(msg))
+
+			# Limit minimum wait as well
 			self._isleep(0.1)
-			wait_milliseconds = 1000		# First one immediately, updates only on demand
+
+			# First status requested immediately, updates only on demand, but at least once a second
+			wait_milliseconds = 1000
 
 	def ws_echo(self, ws):
 		ws.send(b"Welcome to the Echo server")
