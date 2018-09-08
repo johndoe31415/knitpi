@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <linux/un.h>
@@ -117,7 +118,7 @@ static enum execution_state_t handler_setknitmode(struct client_thread_data_t *w
 static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_hwmock(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 
-static bool determine_movement_direction(struct client_thread_data_t *worker, bool send_error_response);
+static bool determine_movement_direction(const char *cmdname, struct client_thread_data_t *worker);
 
 static struct command_t known_commands[] = {
 	{
@@ -222,6 +223,17 @@ static const char *repeat_mode_to_str(enum repeat_mode_t mode) {
 	return "unknown";
 }
 
+static void  __attribute__ ((format (printf, 3, 4))) log_respond_error(struct client_thread_data_t *worker, enum loglvl_t loglvl, const char *msg, ...) {
+	va_list ap;
+	char message[256];
+	va_start(ap, msg);
+	vsnprintf(message, sizeof(message), msg, ap);
+	va_end(ap);
+
+	json_respond_simple(worker->f, "error", "%s", message);
+	logmsg(loglvl, "(%d) %s", worker->client_id, message);
+}
+
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	struct json_dict_entry_t json_dict[] = {
 		JSON_DICTENTRY_STR("msg_type", "status"),
@@ -267,8 +279,7 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 	bool merge = tokens->token[3].boolean;
 	struct pattern_t *pattern = png_read_pattern(membuf, offsetx, offsety);
 	if (!pattern) {
-		logmsg(LLVL_ERROR, "(%d) Failed read PNG image from client.", worker->client_id);
-		json_respond_simple(worker->f, "error", "Could not read PNG image.");
+		log_respond_error(worker, LLVL_ERROR, "%s: Failed to read PNG image.", tokens->token[0].string);
 		return FAILED;
 	} else {
 		if (!merge) {
@@ -278,8 +289,7 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 		} else {
 			struct pattern_t *merge_pattern = pattern_merge(worker->server_state->pattern, pattern);
 			if (!merge_pattern) {
-				logmsg(LLVL_WARN, "(%d) Failed merge patterns.", worker->client_id);
-				json_respond_simple(worker->f, "error", "Could not merge patterns.");
+				log_respond_error(worker, LLVL_WARN, "%s: Failed to merge patterns.", tokens->token[0].string);
 				pattern_free(pattern);
 				return FAILED;
 			}
@@ -302,7 +312,7 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	bool rawdata = tokens->token[1].boolean;
 	if (!worker->server_state->pattern) {
-		json_respond_simple(worker->f, "error", "No pattern is set.");
+		log_respond_error(worker, LLVL_DEBUG, "%s: No pattern is set.", tokens->token[0].string);
 		return SILENT_FAILED;
 	}
 	const struct png_write_options_t raw_write_options = {
@@ -312,7 +322,7 @@ static enum execution_state_t handler_getpattern(struct client_thread_data_t *wo
 		.color_scheme = COLSCHEME_RAW,
 	};
 	if (!png_write_pattern_mem(worker->server_state->pattern, membuf, rawdata ? &raw_write_options : NULL)) {
-		json_respond_simple(worker->f, "error", "Unable to convert pattern to PNG.");
+		log_respond_error(worker, LLVL_ERROR, "%s: Unable to convert pattern to PNG.", tokens->token[0].string);
 		return FAILED;
 	}
 	return SUCCESS;
@@ -361,7 +371,7 @@ static enum execution_state_t handler_setrow(struct client_thread_data_t *worker
 	if ((worker->server_state->pattern) && (tokens->token[1].integer >= 0) && (tokens->token[1].integer < worker->server_state->pattern->height)) {
 		int current_row = worker->server_state->pattern_row;
 		worker->server_state->pattern_row = tokens->token[1].integer;
-		if (determine_movement_direction(worker, true)) {
+		if (determine_movement_direction(tokens->token[0].string, worker)) {
 			sled_update(worker->server_state);
 			isleep_interrupt(&worker->server_state->event_notification);
 			json_respond_simple(worker->f, "ok", "New row set.");
@@ -384,20 +394,14 @@ static enum execution_state_t handler_setoffset(struct client_thread_data_t *wor
 	return SUCCESS;
 }
 
-static bool determine_movement_direction(struct client_thread_data_t *worker, bool send_error_response) {
+static bool determine_movement_direction(const char *cmdname, struct client_thread_data_t *worker) {
 	if (!worker->server_state->pattern) {
-		logmsg(LLVL_WARN, "(%d) Cannot determine movement direction without a pattern set.", worker->client_id);
-		if (send_error_response) {
-			json_respond_simple(worker->f, "error", "Cannot determine movement direction without a pattern set.");
-		}
+		log_respond_error(worker, LLVL_WARN, "%s: Cannot determine movement direction without a pattern set.", cmdname);
 		return false;
 	}
 
 	if (!worker->server_state->carriage_position_valid) {
-		logmsg(LLVL_WARN, "(%d) Cannot determine movement direction without a valid carriage position.", worker->client_id);
-		if (send_error_response) {
-			json_respond_simple(worker->f, "error", "Cannot determine movement direction without a valid carriage position.");
-		}
+		log_respond_error(worker, LLVL_WARN, "%s: Cannot determine movement direction without a valid carriage position.", cmdname);
 		return false;
 	}
 
@@ -408,10 +412,7 @@ static bool determine_movement_direction(struct client_thread_data_t *worker, bo
 		/* We're right of pattern */
 		worker->server_state->even_rows_left_to_right = ((worker->server_state->pattern_row % 2) != 0);
 	} else {
-		logmsg(LLVL_ERROR, "(%d) Cannot determine movement direction at this carriage postion: carriage at %d and pattern from %d to %d.", worker->client_id, worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
-		if (send_error_response) {
-			json_respond_simple(worker->f, "error", "Cannot determine movement direction at this carriage postion: carriage at %d and pattern from %d to %d.", worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
-		}
+		log_respond_error(worker, LLVL_ERROR, "%s: Cannot determine movement direction at this carriage postion: carriage at %d and pattern from %d to %d.", cmdname, worker->server_state->carriage_position, worker->server_state->pattern->min_x + worker->server_state->pattern_offset, worker->server_state->pattern->max_x + worker->server_state->pattern_offset);
 		return false;
 	}
 
@@ -420,7 +421,7 @@ static bool determine_movement_direction(struct client_thread_data_t *worker, bo
 
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	if (!strcasecmp(tokens->token[1].string, "on")) {
-		if (determine_movement_direction(worker, true)) {
+		if (determine_movement_direction(tokens->token[0].string, worker)) {
 			worker->server_state->knitting_mode = MODE_ON;
 		} else {
 			return FAILED;
@@ -476,8 +477,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 
 	struct tokens_t* tokens = tok_create(line);
 	if (!tokens) {
-		logmsg(LLVL_ERROR, "(%d) Failed to tokenize client input: %s", worker->client_id, strerror(errno));
-		json_respond_simple(worker->f, "error", "Failed to tokenize client command.");
+		log_respond_error(worker, LLVL_ERROR, "Failed to tokenize client input: %s", strerror(errno));
 		return FATAL_ERROR;
 	}
 
@@ -494,8 +494,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 			}
 		}
 		if (!command) {
-			logmsg(LLVL_WARN, "(%d) Client issued unknown command: %s", worker->client_id, command_name);
-			json_respond_simple(worker->f, "error", "No such command: %s", command_name);
+			log_respond_error(worker, LLVL_WARN, "No such command: %s", command_name);
 			result = FAILED;
 		} else {
 			if (tokens->token_cnt - 1 == command->arg_count) {
@@ -504,8 +503,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 					if (command->arguments[i].parser) {
 						bool parse_result = command->arguments[i].parser(&tokens->token[i + 1]);
 						if (!parse_result) {
-							logmsg(LLVL_WARN, "(%d) Could not parse client's argument %s for command %s: %s", worker->client_id, command->arguments[i].name, command_name, tokens->token[i + 1].string);
-							json_respond_simple(worker->f, "error", "Could not parse argument %s of command %s.", command->arguments[i].name, command_name);
+							log_respond_error(worker, LLVL_WARN, "Could not parse client's argument %s for command %s: %s", command->arguments[i].name, command_name, tokens->token[i + 1].string);
 							result = FAILED;
 							break;
 						}
@@ -519,8 +517,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 						 * binary data we read */
 						int bindata_length = tokens->token[command->arg_count].integer;
 						if ((bindata_length < 0) || (bindata_length > pgm_opts->max_bindata_recv_bytes)) {
-							logmsg(LLVL_ERROR, "(%d) Tried sending %d bytes of binary data, maximum of %d bytes allowed.", worker->client_id, bindata_length, pgm_opts->max_bindata_recv_bytes);
-							json_respond_simple(worker->f, "error", "Binary data length %d is invalid. Maximum of %d bytes is permissible.", bindata_length, pgm_opts->max_bindata_recv_bytes);
+							log_respond_error(worker, LLVL_ERROR, "Binary data length %d is invalid. Maximum of %d bytes is permissible.", bindata_length, pgm_opts->max_bindata_recv_bytes);
 							result = FATAL_ERROR;
 						} else {
 							/* Try to allocate data buffer */
@@ -528,13 +525,11 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 								/* Then try reading from client */
 								logmsg(LLVL_TRACE, "(%d) Receiving %d bytes of binary data.", worker->client_id, bindata_length);
 								if (fread(membuf.data, bindata_length, 1, worker->f) != 1) {
-									logmsg(LLVL_WARN, "(%d) Short read while receiving %d bytes of binary data.", worker->client_id, bindata_length);
-									json_respond_simple(worker->f, "error", "Short read while receiving binary data.");
+									log_respond_error(worker, LLVL_ERROR, "Short read while receivgin %d bytes of binary data.", bindata_length);
 									result = FATAL_ERROR;
 								}
 							} else {
-								logmsg(LLVL_WARN, "(%d) Failed to allocate %d bytes of binary data membuf: %s", worker->client_id, bindata_length, strerror(errno));
-								json_respond_simple(worker->f, "error", "Failed ot allocate binary data buffer for reception of data.");
+								log_respond_error(worker, LLVL_ERROR, "Failed to allocate %d bytes binary data buffer for reception of data: %s", bindata_length, strerror(errno));
 								result = FATAL_ERROR;
 							}
 						}
@@ -554,8 +549,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 
 						/* Then send the binary data */
 						if (fwrite(membuf.data, membuf.length, 1, worker->f) != 1) {
-							logmsg(LLVL_ERROR, "(%d) Short write when trying to send %d bytes to client.", worker->client_id, membuf.length);
-							json_respond_simple(worker->f, "error", "Short write when trying to send %d bytes to you.", membuf.length);
+							log_respond_error(worker, LLVL_ERROR, "Short write when trying to send %d bytes to client.", membuf.length);
 							result = FATAL_ERROR;
 						}
 					}
@@ -572,8 +566,7 @@ static enum execution_state_t parse_execute_command(struct client_thread_data_t 
 					buf += charcnt;
 					bufsize -= charcnt;
 				}
-				logmsg(LLVL_WARN, "(%d) Client issued wrong argument count for command: %s, supplied %d, required %d. Usage: %s%s", worker->client_id, command_name, tokens->token_cnt - 1, command->arg_count, command_name, usage);
-				json_respond_simple(worker->f, "error", "The %s command requires %d arguments, you provided %d. Usage: %s%s", command_name, command->arg_count, tokens->token_cnt - 1, command_name, usage);
+				log_respond_error(worker, LLVL_WARN, "%s: %d arguments required, but %d provided. Usage: %s%s", command_name, command->arg_count, tokens->token_cnt - 1, command_name, usage);
 				result = FAILED;
 			}
 		}
@@ -641,14 +634,13 @@ bool start_server(struct server_state_t *server_state) {
 	while (true) {
 		struct sockaddr_un peer_addr;
 		socklen_t addrlen = sizeof(peer_addr);
-		logmsg(LLVL_TRACE, "Accepting connection.");
 		int fd = accept(sd, (struct sockaddr*)&peer_addr, &addrlen);
 		if (fd == -1) {
 			logmsg(LLVL_FATAL, "Could not accept() client connection: %s", strerror(errno));
 			close(sd);
 			return false;
 		}
-		logmsg(LLVL_DEBUG, "(%u) Client connected.", client_id);
+		logmsg(LLVL_DEBUG, "(%u) Client connected, %d total currently.", client_id, server_state->thread_count.ctr + 1);
 
 
 		struct client_thread_data_t *thread_data = calloc(1, sizeof(struct client_thread_data_t));
