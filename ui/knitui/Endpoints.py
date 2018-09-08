@@ -20,14 +20,19 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import flask
-import uwsgi
 import json
 import sys
-from knitui import app, websocket
 from knitui.Controller import Controller
+from knitui.Application import app, websocket
 
-
-if "config_filename" not in uwsgi.opt:
+try:
+	import uwsgi
+except ImportError:
+	uwsgi = None
+if not uwsgi:
+	print("WARNING: uwsgi module could not be loaded, no configuration is set.", file = sys.stderr)
+	config = { }
+elif "config_filename" not in uwsgi.opt:
 	print("WARNING: No configuration ('config_filename') set. This might cause followup errors (e.g., KeyError).", file = sys.stderr)
 	config = { }
 else:

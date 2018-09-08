@@ -19,7 +19,3 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-import threading
-
-from knitui.Application import app, websocket
-import knitui.Endpoints

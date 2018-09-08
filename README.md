@@ -2,8 +2,7 @@
 ![I love KnitPi](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/logo.png)
 ![Picture of KnitPi](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/overview.jpg)
 
-KnitPi is a Raspberry Pi interface for a Brother KH-930 knitting machine. It's
-functional, but very experimental.
+KnitPi is a Raspberry Pi interface for a Brother KH-930 knitting machine.
 
 ## Installation
 Installation on a Raspberry Pi is very easy thanks to the "install_locally"
@@ -11,11 +10,27 @@ script that is provided. Copy it to your Raspberry Pi and execute it as root.
 E.g.:
 
 ```
-reliant joe $ scp install_locally root@192.168.1.123:
-reliant joe $ ssh root@192.168.1.123
-knitpi root # ./install_locally
+reliant joe $ scp install_locally root@192.168.1.200:
+install_locally                   100% 5516     4.5MB/s   00:00
+reliant joe $ ssh root@192.168.1.200
+Linux raspberrypi 4.14.50-v7+ #1122 SMP Tue Jun 19 12:26:26 BST 2018 armv7l
 [...]
+root@raspberrypi:~# ./install_locally
+Failed to stop knitpi-ui.service: Unit knitpi-ui.service not loaded.
+Failed to stop knitpi-core.service: Unit knitpi-core.service not loaded.
+Hit:1 http://raspbian.raspberrypi.org/raspbian stretch InRelease
+Hit:2 http://archive.raspberrypi.org/debian stretch InRelease
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+[...]
+Successfully installed uwsgi-2.0.17.1
+Installation finished. Changes require you to reboot your Raspberry Pi.
 ```
+
+Note that on the first installation, the SPI module is activated and therefore
+a restart is required. If you're updating it later on, this isn't necessary
+anymore and only the required services will be restarted.
 
 The script will do the following:
 
@@ -31,7 +46,7 @@ from a fresh Raspbian image. I've tested it with
 with future versions, please report it as a bug.
 
 After the Pi has booted, it should now serve a webserver at port 80. I.e., you
-can browse to http://192.168.1.123 and should see the KnitPi UI.
+can browse to http://192.168.1.200 and should see the KnitPi UI.
 
 ## Software
 The software runs directly on the Raspberry Pi. The core is written in C to get
@@ -48,14 +63,17 @@ portable to any kind of embedded Linux system. For Raspbian, you can install
 the required header files using:
 
 ```
-# apt-get install libgpiod-dev
+# apt-get install libgpiod-dev libpng-dev
 ```
 
-To run the UI, you'll need uwsgi and its Python3 plugin, gevent as well as
-Flask and Mako:
+To run the UI, you'll need uwsgi, gevent as well as Flask and Mako. Note that
+the uwsgi version that comes by default with Debian doesn't seem to work
+(couldn't get threading/gevent to play nicely), but the pip3 version works
+flawlessly:
 
 ```
-# apt-get install uwsgi uwsgi-plugin-python3 python3-gevent python3-flask python3-mako
+# apt-get install python3-gevent python3-flask python3-mako
+# pip3 install uwsgi
 ```
 
 ## Hardware
