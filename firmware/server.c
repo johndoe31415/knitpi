@@ -294,6 +294,7 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 	}
 
 	worker->server_state->knitting_mode = false;
+	worker->server_state->pattern_row = 0;
 	center_pattern(worker);
 	sled_update(worker->server_state);
 	isleep_interrupt(&worker->server_state->event_notification);
