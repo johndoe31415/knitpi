@@ -34,7 +34,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <linux/un.h>
-#include <stdarg.h>
 #include "sled.h"
 #include "json.h"
 #include "knitcore.h"

@@ -29,7 +29,6 @@
 #include <errno.h>
 #include <string.h>
 #include <libpng16/png.h>
-#include "pattern.h"
 #include "png_reader.h"
 #include "logging.h"
 

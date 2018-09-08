@@ -24,8 +24,10 @@
 #ifndef __TOOLS_H__
 #define __TOOLS_H__
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 typedef void* (*thread_function_t)(void *arg);
 

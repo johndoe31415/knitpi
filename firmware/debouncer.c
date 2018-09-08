@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
-#include "peripherals_gpio.h"
 #include "debouncer.h"
 #include "tools.h"
 #include "isleep.h"

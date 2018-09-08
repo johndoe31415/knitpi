@@ -21,32 +21,13 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
 #include <unistd.h>
-#include <inttypes.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <linux/un.h>
-#include <signal.h>
 
-#include "knitcore.h"
 #include "peripherals.h"
 #include "gpio_thread.h"
-#include "isleep.h"
-#include "tools.h"
 #include "debouncer.h"
 #include "sled.h"
-#include "needles.h"
-#include "pnm_reader.h"
-#include "png_writer.h"
-#include "png_reader.h"
-#include "json.h"
-#include "logging.h"
-#include "atomic.h"
 #include "server.h"
 #include "pgmopts.h"
 

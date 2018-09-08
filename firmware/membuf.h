@@ -25,6 +25,7 @@
 #define __MEMBUF_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MEMBUF_INITIALIZER		 { 0 }
 

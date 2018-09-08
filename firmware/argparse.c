@@ -8,7 +8,6 @@
  *   Generated at: 2018-09-03 21:56:19
  */
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>

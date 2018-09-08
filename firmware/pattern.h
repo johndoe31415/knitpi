@@ -24,6 +24,8 @@
 #ifndef __PATTERN_H__
 #define __PATTERN_H__
 
+#include <stdint.h>
+
 #define MAX_PATTERN_WIDTH	400
 #define MAX_PATTERN_HEIGHT	1000
 

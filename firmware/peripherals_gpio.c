@@ -23,7 +23,6 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <time.h>
 #include <string.h>
 #include <errno.h>
 #include <gpiod.h>

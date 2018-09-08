@@ -21,10 +21,6 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-
 #include <pthread.h>
 #include "isleep.h"
 #include "tools.h"

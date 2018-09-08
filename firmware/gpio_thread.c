@@ -25,7 +25,6 @@
 #include <pthread.h>
 #include "gpio_thread.h"
 #include "tools.h"
-#include "peripherals_gpio.h"
 
 static bool run_thread;
 

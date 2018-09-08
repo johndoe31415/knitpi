@@ -21,8 +21,6 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
-#include "peripherals_gpio.h"
-#include "peripherals_spi.h"
 #include "peripherals.h"
 
 bool all_peripherals_init(void) {

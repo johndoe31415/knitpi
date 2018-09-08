@@ -37,7 +37,6 @@ OBJS := \
 	pgmopts.o \
 	png_reader.o \
 	png_writer.o \
-	pnm_reader.o \
 	server.o \
 	sled.o \
 	tokenizer.o \
