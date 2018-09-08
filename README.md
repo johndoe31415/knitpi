@@ -113,9 +113,9 @@ flawlessly:
 ## Hardware
 I've build a custom Raspberry Pi shield on prototype board from scratch. The
 schematics [are in the Git
-repository](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/KnittingPi.pdf).
+repository](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/KnitPi.pdf).
 I've drawn them with CircuitMaker and the [CircuitMaker project page can be
-found here](https://circuitmaker.com/Projects/Details/johndoe31415/KnittingPi).
+found here](https://circuitmaker.com/Projects/Details/johndoe31415/KnitPi).
 
 
 ## Included third-party code/data
