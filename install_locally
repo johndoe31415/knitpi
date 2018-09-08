@@ -118,6 +118,7 @@ with open("/etc/systemd/system/knitpi-ui.service", "w") as f:
 	print("ExecStart=%s/.local/bin/uwsgi knitui_prod.ini" % (config["homedir"]), file = f)
 	print("User=%s" % (config["username"]), file = f)
 	print("WorkingDirectory=%s/knitpi/ui" % (config["homedir"]), file = f)
+	print("AmbientCapabilities=CAP_NET_BIND_SERVICE", file = f)
 	print(file = f)
 	print("[Install]", file = f)
 	print("WantedBy=multi-user.target", file = f)
