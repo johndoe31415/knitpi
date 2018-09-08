@@ -33,7 +33,7 @@ class ServerConnection(object):
 		self._socket_filename = socket_filename
 		self._conn = None
 		self._error = None
-		self._debug = True
+		self._debug = False
 
 	@property
 	def last_error(self):

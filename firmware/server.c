@@ -183,7 +183,7 @@ static struct command_t known_commands[] = {
 		.handler = handler_setknitmode,
 		.arg_count = 1,
 		.arguments = {
-			{ .name = "[on|off]/str" },
+			{ .name = "mode/bool", .parser = argument_parse_bool },
 		},
 	},
 	{
@@ -205,14 +205,6 @@ static struct command_t known_commands[] = {
 	},
 };
 #define KNOWN_COMMAND_COUNT		(sizeof(known_commands) / sizeof(struct command_t))
-
-static const char *knitting_mode_to_str(enum knitting_mode_t mode) {
-	switch (mode) {
-		case MODE_OFF:	return "off";
-		case MODE_ON:	return "on";
-	}
-	return "unknown";
-}
 
 static const char *repeat_mode_to_str(enum repeat_mode_t mode) {
 	switch (mode) {
@@ -237,7 +229,7 @@ static void  __attribute__ ((format (printf, 3, 4))) log_respond_error(struct cl
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
 	struct json_dict_entry_t json_dict[] = {
 		JSON_DICTENTRY_STR("msg_type", "status"),
-		JSON_DICTENTRY_STR("knitting_mode", knitting_mode_to_str(worker->server_state->knitting_mode)),
+		JSON_DICTENTRY_BOOL("knitting_mode", worker->server_state->knitting_mode),
 		JSON_DICTENTRY_STR("repeat_mode", repeat_mode_to_str(worker->server_state->repeat_mode)),
 		JSON_DICTENTRY_BOOL("carriage_position_valid", worker->server_state->carriage_position_valid),
 		JSON_DICTENTRY_BOOL("even_rows_left_to_right", worker->server_state->even_rows_left_to_right),
@@ -301,7 +293,7 @@ static enum execution_state_t handler_setpattern(struct client_thread_data_t *wo
 		}
 	}
 
-	worker->server_state->knitting_mode = MODE_OFF;
+	worker->server_state->knitting_mode = false;
 	center_pattern(worker);
 	sled_update(worker->server_state);
 	isleep_interrupt(&worker->server_state->event_notification);
@@ -420,21 +412,19 @@ static bool determine_movement_direction(const char *cmdname, struct client_thre
 }
 
 static enum execution_state_t handler_setknitmode(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
-	if (!strcasecmp(tokens->token[1].string, "on")) {
+	if (tokens->token[1].boolean) {
+		/* Turn knitting on */
 		if (determine_movement_direction(tokens->token[0].string, worker)) {
-			worker->server_state->knitting_mode = MODE_ON;
+			worker->server_state->knitting_mode = true;
 		} else {
 			return FAILED;
 		}
-	} else if (!strcasecmp(tokens->token[1].string, "off")) {
-		worker->server_state->knitting_mode = MODE_OFF;
 	} else {
-		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
-		return FAILED;
+		worker->server_state->knitting_mode = false;
 	}
 	sled_update(worker->server_state);
 	isleep_interrupt(&worker->server_state->event_notification);
-	json_respond_simple(worker->f, "ok", "New knitting mode: %s", knitting_mode_to_str(worker->server_state->knitting_mode));
+	json_respond_simple(worker->f, "ok", "New knitting mode: %s", worker->server_state->knitting_mode ? "enabled" : "disabled");
 	return SUCCESS;
 }
 

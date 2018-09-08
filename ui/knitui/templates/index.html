@@ -93,7 +93,7 @@ function wsevent_onmessage(event) {
 		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = "none"; });
 		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = ""; });
 	} else if (msg["msg_type"] == "status") {
-		set_one_class_of(play_button, (msg["knitting_mode"] == "off") ? "btype-stop" : "btype-play", [ "btype-stop", "btype-play" ]);
+		set_one_class_of(play_button, msg["knitting_mode"] ? "btype-play" : "btype-stop", [ "btype-stop", "btype-play" ]);
 		set_one_class_of(repeat_button, "btype-" + msg["repeat_mode"], [ "btype-oneshot", "btype-repeat", "btype-manual" ]);
 
 		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = ""; });
@@ -111,7 +111,7 @@ function wsevent_onmessage(event) {
 			const pixel_pos = (msg["carriage_position"] * 4.95);
 			carriage_position_arrow.title = "Needle " + msg["carriage_position"] + ", " + offset_to_needle(msg["carriage_position"]);
 			carriage_position_arrow.style.left = pixel_pos + "px";
-			if ((pattern_finished_sound != null) && (last_status != null) && (last_status["knitting_mode"] == "on") && (msg["knitting_mode"] == "off")) {
+			if ((pattern_finished_sound != null) && (last_status != null) && (last_status["knitting_mode"]) && (!msg["knitting_mode"])) {
 				/* Machine shut off */
 				pattern_finished_sound.play();
 			} else if ((row_sound != null) && (last_status != null) && (last_status["carriage_position_valid"]) && (last_status["pattern_row"] != msg["pattern_row"])) {
@@ -127,7 +127,7 @@ function wsevent_onmessage(event) {
 			carriage_pos_button.title = "Carriage position not calibrated; move to very left or right side.";
 		}
 
-		if (msg["carriage_position_valid"] && (msg["knitting_mode"] == "on")) {
+		if (msg["carriage_position_valid"] && (msg["knitting_mode"])) {
 			const is_even_row = ((msg["pattern_row"] % 2) == 0);
 			if (msg["even_rows_left_to_right"] == is_even_row) {
 				set_one_class_of(carriage_direction_button, "btype-carriage-right", [ "btype-carriage-unknown", "btype-carriage-right", "btype-carriage-left" ]);
@@ -172,14 +172,12 @@ function wsevent_onclose(event) {
 function action_stop_play() {
 	if (last_status != null) {
 		let uri = null;
-		if (last_status["knitting_mode"] == "on") {
+		if (last_status["knitting_mode"]) {
 			/* Set knitting mode to off so we don't get the finsihed sound */
-			last_status["knitting_mode"] = "off";
+			last_status["knitting_mode"] = false;
 			uri = "/rest/set_knitting_mode/off";
-		} else if (last_status["knitting_mode"] == "off") {
-			uri = "/rest/set_knitting_mode/on";
 		} else {
-			console.log("Unknown play/stop action.", last_status);
+			uri = "/rest/set_knitting_mode/on";
 		}
 		if (uri) {
 			const request = new XMLHttpRequest();

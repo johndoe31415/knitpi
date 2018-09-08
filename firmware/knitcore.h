@@ -30,11 +30,6 @@
 #include "atomic.h"
 #include "isleep.h"
 
-enum knitting_mode_t {
-	MODE_OFF,
-	MODE_ON,
-};
-
 enum repeat_mode_t {
 	RPTMODE_ONESHOT,
 	RPTMODE_REPEAT,
@@ -43,7 +38,7 @@ enum repeat_mode_t {
 
 struct server_state_t {
 	struct isleep_t event_notification;
-	enum knitting_mode_t knitting_mode;
+	bool knitting_mode;
 	enum repeat_mode_t repeat_mode;
 	bool even_rows_left_to_right;
 	bool carriage_position_valid;

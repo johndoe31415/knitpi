@@ -50,17 +50,17 @@ static bool is_direction_left_to_right(const struct server_state_t *server_state
 void sled_update(struct server_state_t *server_state) {
 	if (server_state->pattern == NULL) {
 		deactivate_solenoids();
-		server_state->knitting_mode = MODE_OFF;
+		server_state->knitting_mode = false;
 		return;
 	}
 
 	if (!server_state->carriage_position_valid) {
 		deactivate_solenoids();
-		server_state->knitting_mode = MODE_OFF;
+		server_state->knitting_mode = false;
 		return;
 	}
 
-	if (server_state->knitting_mode == MODE_ON) {
+	if (server_state->knitting_mode) {
 		activate_solenoids();
 	} else {
 		deactivate_solenoids();
@@ -96,7 +96,7 @@ static void next_row(struct server_state_t *server_state) {
 		} else {
 			server_state->pattern_row = 0;
 			if (server_state->repeat_mode == RPTMODE_ONESHOT) {
-				server_state->knitting_mode = MODE_OFF;
+				server_state->knitting_mode = false;
 			} else {
 				if ((server_state->pattern->height % 2) == 1) {
 					server_state->even_rows_left_to_right = !server_state->even_rows_left_to_right;
@@ -113,7 +113,7 @@ static void check_for_next_row(struct server_state_t *server_state) {
 	if (!server_state->pattern) {
 		return;
 	}
-	if (server_state->knitting_mode != MODE_ON) {
+	if (!server_state->knitting_mode) {
 		return;
 	}
 
