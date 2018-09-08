@@ -29,18 +29,18 @@
 #include "needles.h"
 #include "pgmopts.h"
 
-static void deactivate_solenoids(void) {
-	if (pgm_opts->no_hardware) {
+void set_knitting_mode(struct server_state_t *server_state, bool knitting_mode) {
+	if (server_state->knitting_mode == knitting_mode) {
 		return;
 	}
-	gpio_inactive(GPIO_74HC595_OE);
-}
 
-static void activate_solenoids(void) {
-	if (pgm_opts->no_hardware) {
-		return;
+	server_state->knitting_mode = knitting_mode;
+	logmsg(LLVL_TRACE, "Knitting mode: %s", knitting_mode ? "enabled" : "disabled");
+	if (!pgm_opts->no_hardware) {
+		gpio_set_to(GPIO_LED_RED, knitting_mode);
+		gpio_set_to(GPIO_74HC595_OE, knitting_mode);
 	}
-	gpio_active(GPIO_74HC595_OE);
+	isleep_interrupt(&server_state->event_notification);
 }
 
 static bool is_direction_left_to_right(const struct server_state_t *server_state) {
@@ -49,24 +49,14 @@ static bool is_direction_left_to_right(const struct server_state_t *server_state
 
 void sled_update(struct server_state_t *server_state) {
 	if (server_state->pattern == NULL) {
-		deactivate_solenoids();
-		server_state->knitting_mode = false;
+		set_knitting_mode(server_state, false);
 		return;
 	}
 
 	if (!server_state->carriage_position_valid) {
-		deactivate_solenoids();
-		server_state->knitting_mode = false;
+		set_knitting_mode(server_state, false);
 		return;
 	}
-
-	if (server_state->knitting_mode) {
-		activate_solenoids();
-	} else {
-		deactivate_solenoids();
-	}
-
-
 
 	uint8_t spi_data[] = { 0, 0 };
 	if ((server_state->pattern_row >= 0) && (server_state->pattern_row < server_state->pattern->height)) {
@@ -96,7 +86,7 @@ static void next_row(struct server_state_t *server_state) {
 		} else {
 			server_state->pattern_row = 0;
 			if (server_state->repeat_mode == RPTMODE_ONESHOT) {
-				server_state->knitting_mode = false;
+				set_knitting_mode(server_state, false);
 			} else {
 				if ((server_state->pattern->height % 2) == 1) {
 					server_state->even_rows_left_to_right = !server_state->even_rows_left_to_right;

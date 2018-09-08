@@ -92,6 +92,7 @@ function wsevent_onmessage(event) {
 		connection_error.title = msg["text"];
 		document.querySelectorAll(".show_with_connection").forEach(function(element) { element.style.display = "none"; });
 		document.querySelectorAll(".show_without_connection").forEach(function(element) { element.style.display = ""; });
+		pattern_available(false);
 	} else if (msg["msg_type"] == "status") {
 		set_one_class_of(play_button, msg["knitting_mode"] ? "btype-play" : "btype-stop", [ "btype-stop", "btype-play" ]);
 		set_one_class_of(repeat_button, "btype-" + msg["repeat_mode"], [ "btype-oneshot", "btype-repeat", "btype-manual" ]);

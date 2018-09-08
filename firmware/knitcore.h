@@ -56,6 +56,7 @@ struct server_state_t {
 }
 
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
+void set_knitting_mode(struct server_state_t *state, bool knitting_mode);
 void sled_update(struct server_state_t *server_state);
 void sled_actuation_callback(struct server_state_t *server_state, int position, bool belt_phase);
 /***************  AUTO GENERATED SECTION ENDS   ***************/

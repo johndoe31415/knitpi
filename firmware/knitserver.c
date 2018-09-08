@@ -44,6 +44,7 @@ int main(int argc, char **argv) {
 		sled_set_callback(&server_state, sled_actuation_callback);
 		start_debouncer_thread(sled_input);
 		start_gpio_thread(debouncer_input, true);
+		gpio_active(GPIO_LED_GREEN);
 		spi_clear(SPI_74HC595, 2);
 	}
 

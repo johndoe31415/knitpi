@@ -68,6 +68,18 @@ static const struct gpio_init_data_t gpio_init_data[GPIO_COUNT] = {
 		.active_low = false,
 		.is_output = false,
 	},
+	[GPIO_LED_RED] = {
+		.name = "LED_RED",
+		.gpio_no = 27,
+		.active_low = false,
+		.is_output = true,
+	},
+	[GPIO_LED_GREEN] = {
+		.name = "LED_GREEN",
+		.gpio_no = 17,
+		.active_low = false,
+		.is_output = true,
+	},
 };
 
 static struct gpiod_chip *gpio_chip;

@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include "peripherals_gpio.h"
 #include "sled.h"
+#include "logging.h"
 
 static int sled_position = 0;
 static uint8_t last_rotary = 0xff;
@@ -36,6 +37,7 @@ static sled_callback_t sled_callback = NULL;
 static int last_reported_position = 0xffff;
 static bool belt_phase = false;
 
+static const int fixed_position_left = 0;
 static const int fixed_position_right = 794;
 
 unsigned int sled_get_skipped_needles_cnt(void) {
@@ -76,8 +78,8 @@ void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 		case GPIO_BROTHER_LEFT_HALL:
 			if (!value) {
 				belt_phase = gpio_get_last_value(GPIO_BROTHER_BP);
-				printf("LEFT %+d phase %d\n", sled_position, belt_phase);
-				sled_position = 0;
+				logmsg(LLVL_DEBUG, "Left hall sensor triggered, previous rotary position %d, deviation %+d (%+d needles), belt_phase %d, new rotary position %d.", sled_position, sled_position - fixed_position_left, (sled_position - fixed_position_left + 2) / 4, belt_phase, fixed_position_left);
+				sled_position = fixed_position_left;
 				skipped_needles_cnt = 0;
 				pos_valid = true;
 			}
@@ -86,7 +88,7 @@ void sled_input(enum gpio_t gpio, const struct timespec *ts, bool value) {
 		case GPIO_BROTHER_RIGHT_HALL:
 			if (!value) {
 				belt_phase = !gpio_get_last_value(GPIO_BROTHER_BP);
-				printf("LEFT %+d phase %d\n", fixed_position_right - sled_position, belt_phase);
+				logmsg(LLVL_DEBUG, "Right hall sensor triggered, previous rotary position %d, deviation %+d (%+d needles), belt_phase %d, new rotary position %d.", sled_position, sled_position - fixed_position_right, (sled_position - fixed_position_right + 2) / 4, belt_phase, fixed_position_right);
 				sled_position = fixed_position_right;
 				skipped_needles_cnt = 0;
 				pos_valid = true;

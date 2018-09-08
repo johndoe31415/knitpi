@@ -3,4 +3,4 @@
 #
 
 make -C firmware clean
-rsync -a --delete -r ../knitpi knitpi:
+rsync -a --delete -r ../knitpi knitpi.wlan.net:
