@@ -38,6 +38,16 @@ if os.getuid() != 0:
 	print("You must run this script as root.", file = sys.stderr)
 	sys.exit(1)
 
+# First stop services to be able to update them. This may fail if they don't yet exist.
+try:
+	subprocess.check_call([ "systemctl", "stop", "knitpi-ui" ])
+except subprocess.CalledProcessError:
+	pass
+try:
+	subprocess.check_call([ "systemctl", "stop", "knitpi-core" ])
+except subprocess.CalledProcessError:
+	pass
+
 # Install all packages that are required
 subprocess.check_call([ "apt-get", "install" ] + config["apt-pkgs"])
 
@@ -97,7 +107,7 @@ with open("/etc/systemd/system/knitpi-core.service", "w") as f:
 	print(file = f)
 	print("[Service]", file = f)
 	print("Type=simple", file = f)
-	print("ExecStart=%s/firmware/knitserver -v %s/socket" % (config["gitdir"], config["homedir"]), file = f)
+	print("ExecStart=%s/firmware/knitserver -v -f %s/socket" % (config["gitdir"], config["homedir"]), file = f)
 	print("User=%s" % (config["username"]), file = f)
 	print(file = f)
 	print("[Install]", file = f)
