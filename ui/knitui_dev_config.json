@@ -1,0 +1,4 @@
+{
+	"server_socket":		"../firmware/socket",
+	"template_lookup_dir": 	"knitui/templates"
+}

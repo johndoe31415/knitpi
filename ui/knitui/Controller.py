@@ -29,11 +29,9 @@ from knitui.ServerConnection import ServerConnection
 import gevent.event
 
 class Controller(object):
-	def __init__(self):
-		self._config = {
-			"server_socket":		"../firmware/socket",
-		}
-		self._template_lookup = mako.lookup.TemplateLookup([ "knitui/templates" ], input_encoding = "utf-8", strict_undefined = True)
+	def __init__(self, config):
+		self._config = config
+		self._template_lookup = mako.lookup.TemplateLookup([ self._config["template_lookup_dir"] ], input_encoding = "utf-8", strict_undefined = True)
 		self._isleep_cond = gevent.event.Event()
 
 	def serve_page(self, request, template_name, args = None):

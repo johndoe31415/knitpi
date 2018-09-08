@@ -20,10 +20,22 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
 import flask
+import uwsgi
+import json
+import sys
 from knitui import app, websocket
 from knitui.Controller import Controller
 
-ctrlr = Controller()
+
+if "config_filename" not in uwsgi.opt:
+	print("WARNING: No configuration ('config_filename') set. This might cause followup errors (e.g., KeyError).", file = sys.stderr)
+	config = { }
+else:
+	filename = uwsgi.opt["config_filename"].decode()
+	with open(filename) as f:
+		config = json.load(f)
+
+ctrlr = Controller(config)
 
 @app.route("/")
 def index():

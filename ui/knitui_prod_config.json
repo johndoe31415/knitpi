@@ -1,0 +1,4 @@
+{
+	"server_socket":		"/home/knitui/socket",
+	"template_lookup_dir": 	"/home/knitui/knitui/ui/knitui/templates"
+}
