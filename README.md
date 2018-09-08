@@ -53,8 +53,42 @@ The software runs directly on the Raspberry Pi. The core is written in C to get
 as low latency as possible. So far, we've not encountered issues regarding
 timing (e.g., lost rotary encoder ticks and such). It seems to work well
 without the need to use an external microcontroller, which should make
-replicating this project extremely simple.
+replicating this project extremely simple. The UI is written in
+Python/JavaScript. A Python connector connects the internal UNIX socket that is
+opened by the code to a WebSocket that is then opened by the JavaScript. This
+allows events to be passed with low latency to the UI (so you can see the
+carriage position quickly).
 
+This is a screenshot of the UI:
+
+![Screenshut of KnitUI](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/knitui.png)
+
+You can see three buttons:
+
+  * Leftmost is the play/stop button which starts/stops knitting.
+  * Next to it is the mode button: Oneshot, Repeat or Manual mode controls the
+    way rows are advanced (only knit the pattern once, knit it indefinitely or
+    do not advance at all).
+  * Rightmost is the "show all pattern" icon which temporarily will disable the
+    "current row" bar.
+
+Right next to it are three indicators:
+
+  * The leftmost shows if the carriage position is calibrated. Initially it
+    isn't and you need to move it over the left or right hall sensor to get the
+    checkmark.
+  * Right next to it is the carriage movement indicator. Here, the carriage
+    moves from left to right.
+  * On the very right is the "skipped needles" indicator. This indicates how
+    many times the rotary encoder got out of sync. If this number is too high
+    (e.g., more than 4 or 8) then the Raspberry Pi was too slow and skipped steps.
+    This means the position may not be accurate anymore. You should move ove the
+    Hall sensor again to reset this to zero.
+
+You can move the pattern around by using the left/right cursor keys. You can
+advance/change rows by using the up/down/page up/page down/home/end keys as
+well. Also, you can load/modify patterns using the "Pattern" submenu and
+control settings under "Settings".
 
 ## Dependencies
 KnitPi does not rely on any Raspberry Pi specific hardware, but I run it on a
