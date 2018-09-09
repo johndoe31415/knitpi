@@ -149,11 +149,22 @@ with open("/etc/systemd/system/knitpi-update.service", "w") as f:
 	print("After=network.target", file = f)
 	print(file = f)
 	print("[Service]", file = f)
-	print("Type=oneshot", file = f)
+	print("Type=simple", file = f)
+	print("Restart=no", file = f)
 	print("ExecStart=/usr/local/bin/knitpi-install", file = f)
 os.chmod("/etc/systemd/system/knitpi-update.service", 0o644)
 os.chmod("/usr/local/bin/knitpi-install", 0o755)
 
+
+# Add sudoers entry if not already present
+add_line = "knitpi ALL=NOPASSWD: /bin/systemctl start knitpi-update"
+with open("/etc/sudoers") as f:
+	lines = read().split("\n")
+if add_line not in config_items:
+	with open("/etc/sudoers", "a") as f:
+		print(file = f)
+		print("# Allow knitpi user to upgrade the knitpi firmware", file = f)
+		print(add_line, file = f)
 
 # Enable SPI in configuration
 with open("/boot/config.txt") as f:
