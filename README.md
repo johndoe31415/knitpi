@@ -5,17 +5,17 @@
 KnitPi is a Raspberry Pi interface for a Brother KH-930 knitting machine.
 
 ## Installation
-Installation on a Raspberry Pi is very easy thanks to the "install_locally"
+Installation on a Raspberry Pi is very easy thanks to the "knitpi-install"
 script that is provided. Copy it to your Raspberry Pi and execute it as root.
 E.g.:
 
 ```
-reliant joe $ scp install_locally root@192.168.1.200:
-install_locally                   100% 5516     4.5MB/s   00:00
+reliant joe $ scp knitpi-install root@192.168.1.200:
+knitpi-install                   100% 6152     4.5MB/s   00:00
 reliant joe $ ssh root@192.168.1.200
 Linux raspberrypi 4.14.50-v7+ #1122 SMP Tue Jun 19 12:26:26 BST 2018 armv7l
 [...]
-root@raspberrypi:~# ./install_locally
+root@raspberrypi:~# ./knitpi-install
 Failed to stop knitpi-ui.service: Unit knitpi-ui.service not loaded.
 Failed to stop knitpi-core.service: Unit knitpi-core.service not loaded.
 Hit:1 http://raspbian.raspberrypi.org/raspbian stretch InRelease
