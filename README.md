@@ -134,7 +134,7 @@ particular, it uses:
   * The [software update spinner](https://github.com/SamHerbert/SVG-Loaders)
     was made by Sam Herbert and is licensed under the MIT license.
 
-My sincere thanks go out to both of these.
+My sincere thanks go out to all of these.
 
 ## License
 All my code is licensed under the GNU GPL-3. All included code is licensed
