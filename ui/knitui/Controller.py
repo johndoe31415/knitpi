@@ -47,7 +47,7 @@ class Controller(object):
 		template_args["temperature_exception"] = None
 		try:
 			temp = subprocess.check_output([ "vcgencmd", "measure_temp" ])
-			temp = temp.decode("utf-8")
+			temp = temp.decode("utf-8").rstrip("\r\n")
 			if temp.startswith("temp="):
 				temp = temp[5:]
 			if temp.endswith("'C"):
@@ -142,7 +142,7 @@ class Controller(object):
 
 	def rest_firmware_update(self, request):
 		try:
-			subprocess.check_call([ "sudo", "-A", "/bin/false", "systemctl", "start", "knitpi-update" ])
+			subprocess.check_call([ "sudo", "-A", "/bin/false", "/bin/systemctl", "start", "knitpi-update" ])
 		except subprocess.CalledProcessError as e:
 			return flask.Response(json.dumps({ "status": "error", "message": str(e) }) + "\n", status = 400, mimetype = "application/json")
 		return flask.Response(json.dumps({ "status": "ok", "message": "Triggered firmware update." }) + "\n", status = 200, mimetype = "application/json")
