@@ -159,22 +159,23 @@ os.chmod("/usr/local/bin/knitpi-install", 0o755)
 # Add sudoers entry if not already present
 add_line = "knitpi ALL=NOPASSWD: /bin/systemctl start knitpi-update"
 with open("/etc/sudoers") as f:
-	lines = read().split("\n")
-if add_line not in config_items:
+	lines = f.read().split("\n")
+if add_line not lines:
 	with open("/etc/sudoers", "a") as f:
 		print(file = f)
 		print("# Allow knitpi user to upgrade the knitpi firmware", file = f)
 		print(add_line, file = f)
 
 # Enable SPI in configuration
+add_line = "dtparam=spi=on"
 with open("/boot/config.txt") as f:
-	config_items = f.read().split("\n")
-if "dtparam=spi=on" not in config_items:
+	lines = f.read().split("\n")
+if add_line not in lines:
 	need_reboot = True
 	with open("/boot/config.txt", "a") as f:
 		print(file = f)
 		print("# SPI is needed for KnitPi", file = f)
-		print("dtparam=spi=on", file = f)
+		print(add_line, file = f)
 
 if not need_reboot:
 	print("Installation finished.")
