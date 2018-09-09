@@ -440,7 +440,6 @@ static enum execution_state_t handler_setrepeatmode(struct client_thread_data_t 
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);
 		return FAILED;
 	}
-	sled_update(worker->server_state);
 	isleep_interrupt(&worker->server_state->event_notification);
 	json_respond_simple(worker->f, "ok", "New repeat mode: %s", repeat_mode_to_str(worker->server_state->repeat_mode));
 	return SUCCESS;
