@@ -60,7 +60,7 @@ try:
 	pwdinfo = pwd.getpwnam(config["username"])
 except KeyError:
 	homedir = "/home/%s" % (config["username"])
-	subprocess.check_call([ "useradd", "-c", "KnitPi User", "-d", homedir, "-G", "gpio,spi", "-s", "/bin/bash", "knitpi" ])
+	subprocess.check_call([ "useradd", "-c", "KnitPi User", "-d", homedir, "-G", "gpio,spi,video", "-s", "/bin/bash", "knitpi" ])
 pwdinfo = pwd.getpwnam(config["username"])
 
 if not os.path.isdir(config["homedir"]):

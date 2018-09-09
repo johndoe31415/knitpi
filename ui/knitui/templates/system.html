@@ -1,0 +1,92 @@
+<%inherit file="base.html"/>
+<%block name="title">System Configuration</%block>
+
+<div style="margin-top: 25px; margin-bottom: 25px">
+	<table class="pure-table pure-table-horizontal">
+		<tbody>
+		   <tr>
+				<td>Firmware version:</td>
+				<td>${firmware_version}</td>
+			</tr>
+		   <tr>
+				<td>Firmware date:</td>
+				<td>${firmware_date}</td>
+			</tr>
+			<tr>
+				<td>CPU temperature:</td>
+				%if temperature_exception is None:
+					<td>${temperature}</td>
+				%else:
+					<td><span title="${temperature_exception}">${temperature}</span></td>
+				%endif
+			</tr>
+		</tbody>
+	</table>
+</div>
+
+<input type="button" class="pure-button" value="Perform System Update" id="fw_update_button" onclick="perform_system_update()">
+
+<div id="fw_update_msg" style="display: none">
+	<div>
+		<img src="/static/img/spinner.svg" width="128px" height="128px" />
+	</div>
+	<div>
+		Firmware update started. Do not interrupt power.
+	</div>
+</div>
+<div id="fw_update_failed_msg" style="display: none">
+	Error: Could not trigger firmware update.
+</div>
+
+<script language="JavaScript">
+const fw_update_button = document.getElementById("fw_update_button");
+const fw_update_msg = document.getElementById("fw_update_msg");
+const fw_update_failed_msg = document.getElementById("fw_update_failed_msg");
+
+function fw_update_get_response(event) {
+	if (event.srcElement.status == 200) {
+		location.reload();
+	} else {
+		setTimeout(check_fw_update_finished, 1000);
+	}
+}
+
+function check_fw_update_finished() {
+	console.log("check");
+
+	const request = new XMLHttpRequest();
+	request.open("GET", "/", true);
+	request.addEventListener("error", function() { setTimeout(check_fw_update_finished, 1000) });
+	request.addEventListener("load", fw_update_get_response);
+	request.send();
+}
+
+function fw_update_trigger_failed() {
+	fw_update_failed_msg.style.display = "";
+	fw_update_button.disabled = false;
+}
+
+function fw_update_trigger_response(event) {
+	if (event.srcElement.status == 200) {
+		fw_update_msg.style.display = "";
+		setTimeout(check_fw_update_finished, 5000);
+	} else {
+		fw_update_trigger_failed();
+	}
+}
+
+function perform_system_update() {
+
+	const result = confirm("Really update the firmware?");
+	if (result) {
+		fw_update_button.disabled = true;
+
+		const request = new XMLHttpRequest();
+		request.open("POST", "/rest/firmware_update", true);
+		request.addEventListener("error", fw_update_trigger_failed);
+		request.addEventListener("load", fw_update_trigger_response);
+		request.send();
+	}
+}
+
+</script>

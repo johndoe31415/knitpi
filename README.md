@@ -131,6 +131,8 @@ particular, it uses:
 	[freesound.org](https://www.freesound.org). It was created by
 	[JFRecords](https://freesound.org/people/JFRecords/) under the original
     name "vMax Bells".
+  * The [software update spinner](https://github.com/SamHerbert/SVG-Loaders)
+    was made by Sam Herbert and is licensed under the MIT license.
 
 My sincere thanks go out to both of these.
 

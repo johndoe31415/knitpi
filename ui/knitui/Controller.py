@@ -25,6 +25,7 @@ import json
 import flask
 import threading
 import mako.lookup
+import subprocess
 from knitui.ServerConnection import ServerConnection
 import gevent.event
 
@@ -34,6 +35,28 @@ class Controller(object):
 		self._template_lookup = mako.lookup.TemplateLookup([ self._config["template_lookup_dir"] ], input_encoding = "utf-8", strict_undefined = True)
 		self._isleep_cond = gevent.event.Event()
 
+	def _handler_system(self, template_args):
+		template_args["firmware_version"] = "Unavailable"
+		template_args["firmware_date"] = "Unavailable"
+		try:
+			template_args["firmware_version"] = subprocess.check_output([ "git", "describe", "--abbrev=10", "--dirty", "--always" ]).decode("utf-8")
+			template_args["firmware_date"] = subprocess.check_output([ "git", "log", "-1", "--format=%cd", "--date=iso" ]).decode("utf-8")
+		except (FileNotFoundError, subprocess.CalledProcessError, UnicodeDecodeError) as e:
+			pass
+
+		template_args["temperature_exception"] = None
+		try:
+			temp = subprocess.check_output([ "vcgencmd", "measure_temp" ])
+			temp = temp.decode("utf-8")
+			if temp.startswith("temp="):
+				temp = temp[5:]
+			if temp.endswith("'C"):
+				temp = temp[:-2] + "°C"
+		except (FileNotFoundError, subprocess.CalledProcessError, UnicodeDecodeError) as e:
+			temp = "Unavailable"
+			template_args["temperature_exception"] = str(e)
+		template_args["temperature"] = temp
+
 	def serve_page(self, request, template_name, args = None):
 		if args is None:
 			args = { }
@@ -41,6 +64,9 @@ class Controller(object):
 			template = self._template_lookup.get_template(template_name + ".html")
 		except mako.exceptions.TopLevelLookupException:
 			return flask.Response("Template '%s' not found.\n" % (template_name), status = 404, mimetype = "text/plain")
+		additional_data_handler = getattr(self, "_handler_" + template_name, None)
+		if additional_data_handler is not None:
+			additional_data_handler(args)
 		result = template.render(**args)
 		return result
 
@@ -113,6 +139,13 @@ class Controller(object):
 
 	def rest_editpattern(self, request, edit_type):
 		return self._single_server_action(lambda server_connection: server_connection.edit_pattern(edit_type))
+
+	def rest_firmware_update(self, request):
+		try:
+			subprocess.check_call([ "sudo", "-A", "/bin/false", "systemctl", "start", "knitpi-update" ])
+		except subprocess.CalledProcessError as e:
+			return flask.Response(json.dumps({ "status": "error", "message": str(e) }) + "\n", status = 400, mimetype = "application/json")
+		return flask.Response(json.dumps({ "status": "ok", "message": "Triggered firmware update." }) + "\n", status = 200, mimetype = "application/json")
 
 	def _isleep(self, max_sleeptime):
 		self._isleep_cond.clear()

@@ -82,6 +82,10 @@ def rest_setknittingmode_post(knitting_mode):
 def rest_setrepeatmode_post(repeat_mode):
 	return ctrlr.rest_setrepeatmode(flask.request, repeat_mode)
 
+@app.route("/rest/firmware_update", methods = [ "POST" ])
+def rest_firmware_update_post():
+	return ctrlr.rest_firmware_update(flask.request)
+
 @websocket.route("/ws/status")
 def ws_status(ws):
 	return ctrlr.ws_status(ws)
