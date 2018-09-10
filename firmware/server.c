@@ -451,7 +451,7 @@ static enum execution_state_t handler_hwmock(struct client_thread_data_t *worker
 		return FAILED;
 	}
 	if (!strcasecmp(tokens->token[1].string, "setpos")) {
-		sled_actuation_callback(worker->server_state, tokens->token[2].integer, false);
+		sled_actuation_callback(worker->server_state, tokens->token[2].integer, true);
 		json_respond_simple(worker->f, "ok", "Set position.");
 	} else {
 		json_respond_simple(worker->f, "error", "Invalid choice: %s", tokens->token[1].string);

@@ -27,6 +27,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct knitmachine_params_t {
+	unsigned int solenoid_count;
+	int belt_phase_offset;
+	unsigned int needle_count;
+	unsigned int active_window_offset;
+	unsigned int active_window_size;
+};
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void needle_pos_to_text(char text[static 32], unsigned int needle_pos);
 int needle_text_to_pos(char letter, unsigned int number);

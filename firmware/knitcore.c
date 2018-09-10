@@ -66,9 +66,10 @@ void sled_update(struct server_state_t *server_state) {
 			if (color != 0) {
 
 				if (sled_before_needle_id(server_state->carriage_position, knit_needle_id, server_state->belt_phase, direction_left_to_right)) {
-					char needle_name[32];
-					needle_pos_to_text(needle_name, knit_needle_id);
-					logmsg(LLVL_TRACE, "At %d actuating %s", server_state->carriage_position, needle_name);
+					char position_needle_name[32], actuated_needle_name[32];
+					needle_pos_to_text(position_needle_name, server_state->carriage_position);
+					needle_pos_to_text(actuated_needle_name, knit_needle_id);
+					logmsg(LLVL_TRACE, "At %s (needle %d) actuating %s (needle %d), BP %d", position_needle_name, server_state->carriage_position, actuated_needle_name, knit_needle_id, server_state->belt_phase);
 					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, knit_needle_id);
 				}
 			}
