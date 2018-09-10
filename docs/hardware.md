@@ -19,14 +19,14 @@ isn't harmful either.
 ## Electrical Connections
 Inputs/outputs are described from the knitting machine side:
 
-  * In: 16 x solenoid inputs. These are power inputs that source current. About
+  * *In*: 16 x solenoid inputs. These are power inputs that source current. About
     100mA at 12V for each individual one. To the best of my knowledge, they are
     designed to operate at a 100% duty cycle. They can be easily driven with a
     ULN200x or ULN280x or discretely via e.g., a BC338.
-  * Out: 2 x hall sensor analog outputs: They give out an analog voltage of 0..5V.
-  * Out: Rotary encoder V1/V2 signal. Standard 5V TTL digital signal that
+  * *Out*: 2 x hall sensor analog outputs: They give out an analog voltage of 0..5V.
+  * *Out*: Rotary encoder V1/V2 signal. Standard 5V TTL digital signal that
     encodes relative movement of the carriage position.
-  * Out: BP signal. Gives the belt phase. There are two ways the carriage can
+  * *Out*: BP signal. Gives the belt phase. There are two ways the carriage can
     interlock with the belt, offset by 8 needles. You need to measure the BP
     signal while the carriage is over the left or right hall sensor fixed position
     to determine the current belt phase and offset the solenoid actuation by the
@@ -61,29 +61,36 @@ right to left, the solenoid has to be turned on starting from needle #71
 
 Moving from left to right, the windows for each needle therefore are:
 
+```
 window_lo = needle_pos + 12
 window_hi = needle_pos + 23
+```
 
 Moving from right to left, they are:
 
+```
 window_lo = needle_pos - 24
 window_hi = needle_pos - 13
+```
 
 However, in normal operation we have the opposite situation: We want to figure
 out for a given carriage position which the minimal and maximal needle is that
 we need to actuate (if they are set). This is also pretty easy. Moving from
 left to right:
 
+```
 min_needle_pos = carriage_pos - 23
 max_needle_pos = carriage_pos - 12
+```
 
 And from right to left:
 
+```
 min_needle_pos = carriage_pos - 24
 max_needle_pos = carriage_pos - 13
+```
 
-
-![Needle actuation diagram](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/needle_actuation.svg)
+![Needle actuation diagram](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/needle_actuation.svg?sanitize=true)
 
 TODO: double check if this is accurate. Seems to have a off-by-one?
 

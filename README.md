@@ -117,7 +117,7 @@ repository](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/Kn
 I've drawn them with CircuitMaker and the [CircuitMaker project page can be
 found here](https://circuitmaker.com/Projects/Details/johndoe31415/KnitPi). You
 [can find a documentation of the inner workings
-here](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/hardware.md).
+here](https://github.com/johndoe31415/knitpi/blob/master/docs/hardware.md).
 
 
 ## Included third-party code/data
