@@ -28,7 +28,7 @@ static struct knitmachine_params_t knitmachine_params = {
 	.solenoid_count = 16,
 	.belt_phase_offset = 8,
 	.needle_count = 200,
-	.active_window_offset = 16,
+	.active_window_offset = 11,
 	.active_window_size = 16,
 };
 
