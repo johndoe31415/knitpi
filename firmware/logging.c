@@ -48,8 +48,12 @@ void set_loglevel(enum loglvl_t new_loglevel) {
 	configured_loglvl = new_loglevel;
 }
 
+bool at_least_loglevel(enum loglvl_t msg_loglvl) {
+	return msg_loglvl <= configured_loglvl;
+}
+
 void __attribute__ ((format (printf, 2, 3))) logmsg(enum loglvl_t msg_loglvl, const char *msg, ...) {
-	if (msg_loglvl > configured_loglvl) {
+	if (!at_least_loglevel(msg_loglvl)) {
 		return;
 	}
 	char datetime[16];

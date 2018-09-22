@@ -21,9 +21,11 @@
  *	Johannes Bauer <JohannesBauer@gmx.de>
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "json.h"
 #include "knitcore.h"
 #include "peripherals.h"
 #include "needles.h"
@@ -62,18 +64,59 @@ void sled_update(struct server_state_t *server_state) {
 	if ((server_state->pattern_row >= 0) && (server_state->pattern_row < server_state->pattern->height)) {
 		bool direction_left_to_right = is_direction_left_to_right(server_state);
 		struct needle_window_t window = get_needle_window_for_carriage_position(server_state->carriage_position, direction_left_to_right);
+
+		if (at_least_loglevel(LLVL_TRACE)) {
+			struct json_dict_entry_t entries[] = {
+				JSON_DICTENTRY_STR("json_id", "windata"),
+				JSON_DICTENTRY_INT("row", server_state->pattern_row),
+				JSON_DICTENTRY_INT("carriage_position", server_state->carriage_position),
+				JSON_DICTENTRY_BOOL("left_to_right", direction_left_to_right),
+				JSON_DICTENTRY_INT("window_min", window.min_needle),
+				JSON_DICTENTRY_INT("window_max", window.max_needle),
+				{ 0 }
+			};
+			json_print_dict(stdout, entries);
+		}
+
 		for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
 			int x = needle_id - server_state->pattern_offset;
 			if (x >= 0) {
 				uint8_t color = pattern_get_color(server_state->pattern, x, server_state->pattern_row);
 				if (color) {
-					char position_needle_name[32], actuated_needle_name[32];
-					needle_pos_to_text(position_needle_name, server_state->carriage_position);
-					needle_pos_to_text(actuated_needle_name, needle_id);
-					logmsg(LLVL_TRACE, "At %s (needle %d) actuating %s (needle %d), BP %d", position_needle_name, server_state->carriage_position, actuated_needle_name, needle_id, server_state->belt_phase);
+					if (at_least_loglevel(LLVL_TRACE)) {
+						char position_needle_name[32], actuated_needle_name[32];
+						needle_pos_to_text(position_needle_name, server_state->carriage_position);
+						needle_pos_to_text(actuated_needle_name, needle_id);
+						logmsg(LLVL_TRACE, "At %s (needle %d) actuating %s (needle %d), BP %d", position_needle_name, server_state->carriage_position, actuated_needle_name, needle_id, server_state->belt_phase);
+					}
+
+					if (at_least_loglevel(LLVL_TRACE)) {
+						/* Print output in JSON form */
+						struct json_dict_entry_t entries[] = {
+							JSON_DICTENTRY_STR("json_id", "knitdata"),
+							JSON_DICTENTRY_INT("row", server_state->pattern_row),
+							JSON_DICTENTRY_INT("carriage_position", server_state->carriage_position),
+							JSON_DICTENTRY_BOOL("left_to_right", direction_left_to_right),
+							JSON_DICTENTRY_BOOL("belt_phase", server_state->belt_phase),
+							JSON_DICTENTRY_INT("pattern_x", x),
+							JSON_DICTENTRY_INT("needle_id", needle_id),
+							{ 0 }
+						};
+						json_print_dict(stdout, entries);
+					}
 					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, needle_id);
 				}
 			}
+		}
+		if (at_least_loglevel(LLVL_TRACE)) {
+			/* Print output in JSON form */
+			struct json_dict_entry_t entries[] = {
+				JSON_DICTENTRY_STR("json_id", "spidata"),
+				JSON_DICTENTRY_INT("byte0", spi_data[0]),
+				JSON_DICTENTRY_INT("byte1", spi_data[1]),
+				{ 0 }
+			};
+			json_print_dict(stdout, entries);
 		}
 	}
 	if (!pgm_opts->no_hardware) {
