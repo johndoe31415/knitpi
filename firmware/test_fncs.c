@@ -334,8 +334,11 @@ static void single_sled_actuation_callback(struct server_state_t *server_state, 
 	bool left_to_right = last_position < position;
 	last_position = position;
 
-	if (sled_before_needle_id(position, knit_needle_id, belt_phase, left_to_right)) {
-		actuate_solenoids_for_needle(spi_data, belt_phase, knit_needle_id);
+	struct needle_window_t window = get_needle_window_for_carriage_position(position, left_to_right);
+	for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
+		if (needle_id == 100) {
+			actuate_solenoids_for_needle(spi_data, belt_phase, needle_id);
+		}
 	}
 
 	if (spi_data[0] || spi_data[1]) {

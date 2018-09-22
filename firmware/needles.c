@@ -52,28 +52,6 @@ int needle_text_to_pos(char letter, unsigned int number) {
 	}
 }
 
-bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right) {
-	int offset_left, offset_right;
-
-	/* 8 - 24 is the full cycle. 16 - 20 is the minimum that still works.  We
-	 * use 15 - 21 to be safe. TODO: 15-21 might lose stitches, try more safety
-	 * margin! */
-	const int safety = 4;
-	offset_left = 16 - safety;
-	offset_right = 20 + safety;
-
-	if (!left_to_right) {
-		int tmp = offset_left;
-		offset_left = -offset_right;
-		offset_right = -tmp;
-	}
-
-	int window_left = needle_id + offset_left;
-	int window_right = needle_id + offset_right;
-	//printf("For needle id %3d BP %d %s: [ %3d - %3d ] window size %d\n", needle_id, belt_phase, left_to_right ? "->" : "<-", window_left, window_right, window_right - window_left);
-	return (sled_position >= window_left) && (sled_position < window_right);
-}
-
 void actuate_solenoids_for_needle(uint8_t *spi_data, bool belt_phase, unsigned int needle_id) {
 	int bit = needle_id % 16;
 	if (belt_phase) {

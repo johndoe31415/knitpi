@@ -61,16 +61,17 @@ void sled_update(struct server_state_t *server_state) {
 	uint8_t spi_data[] = { 0, 0 };
 	if ((server_state->pattern_row >= 0) && (server_state->pattern_row < server_state->pattern->height)) {
 		bool direction_left_to_right = is_direction_left_to_right(server_state);
-		for (int knit_needle_id = 0; knit_needle_id < 200; knit_needle_id++) {
-			uint8_t color = pattern_get_color(server_state->pattern, knit_needle_id - server_state->pattern_offset, server_state->pattern_row);
-			if (color != 0) {
-
-				if (sled_before_needle_id(server_state->carriage_position, knit_needle_id, server_state->belt_phase, direction_left_to_right)) {
+		struct needle_window_t window = get_needle_window_for_carriage_position(server_state->carriage_position, direction_left_to_right);
+		for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
+			int x = needle_id - server_state->pattern_offset;
+			if (x >= 0) {
+				uint8_t color = pattern_get_color(server_state->pattern, x, server_state->pattern_row);
+				if (color) {
 					char position_needle_name[32], actuated_needle_name[32];
 					needle_pos_to_text(position_needle_name, server_state->carriage_position);
-					needle_pos_to_text(actuated_needle_name, knit_needle_id);
-					logmsg(LLVL_TRACE, "At %s (needle %d) actuating %s (needle %d), BP %d", position_needle_name, server_state->carriage_position, actuated_needle_name, knit_needle_id, server_state->belt_phase);
-					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, knit_needle_id);
+					needle_pos_to_text(actuated_needle_name, needle_id);
+					logmsg(LLVL_TRACE, "At %s (needle %d) actuating %s (needle %d), BP %d", position_needle_name, server_state->carriage_position, actuated_needle_name, needle_id, server_state->belt_phase);
+					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, needle_id);
 				}
 			}
 		}
