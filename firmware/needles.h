@@ -35,11 +35,17 @@ struct knitmachine_params_t {
 	unsigned int active_window_size;
 };
 
+struct needle_window_t {
+	int min_needle;
+	int max_needle;
+};
+
 /*************** AUTO GENERATED SECTION FOLLOWS ***************/
 void needle_pos_to_text(char text[static 32], unsigned int needle_pos);
 int needle_text_to_pos(char letter, unsigned int number);
 bool sled_before_needle_id(int sled_position, int needle_id, bool belt_phase, bool left_to_right);
 void actuate_solenoids_for_needle(uint8_t *spi_data, bool belt_phase, unsigned int needle_id);
+struct needle_window_t get_needle_window_for_carriage_position(int carriage_position, bool left_to_right);
 /***************  AUTO GENERATED SECTION ENDS   ***************/
 
 #endif

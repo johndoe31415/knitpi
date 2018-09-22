@@ -82,20 +82,16 @@ void actuate_solenoids_for_needle(uint8_t *spi_data, bool belt_phase, unsigned i
 	spi_data[bit / 8] |= (1 << (bit % 8));
 }
 
-int min_active_needle_for_carriage_position(int carriage_position, bool left_to_right) {
+struct needle_window_t get_needle_window_for_carriage_position(int carriage_position, bool left_to_right) {
+	struct needle_window_t result;
 	if (left_to_right) {
-		return carriage_position - knitmachine_params.active_window_offset - knitmachine_params.active_window_size + 1;
+		result.min_needle = carriage_position - knitmachine_params.active_window_offset - knitmachine_params.active_window_size + 1;
+		result.max_needle = carriage_position - knitmachine_params.active_window_offset;
 	} else {
-		return carriage_position + knitmachine_params.active_window_offset + 1;
+		result.min_needle = carriage_position + knitmachine_params.active_window_offset + 1;
+		result.max_needle = carriage_position + knitmachine_params.active_window_offset + knitmachine_params.active_window_size;
 	}
-}
-
-int max_active_needle_for_carriage_position(int carriage_position, bool left_to_right) {
-	if (left_to_right) {
-		return carriage_position - knitmachine_params.active_window_offset;
-	} else {
-		return carriage_position + knitmachine_params.active_window_offset + knitmachine_params.active_window_size;
-	}
+	return result;
 }
 
 #ifdef __DEBUG_NEEDLES__
@@ -114,30 +110,28 @@ int main(int argc, char **argv) {
 	needle_pos_to_text(carriage_pos_str, carriage_pos);
 	printf("Carriage position: %s (%d), movement %s\n", carriage_pos_str, carriage_pos, left_to_right ? "->" : "<-");
 
-	int min_active_needle = min_active_needle_for_carriage_position(carriage_pos, left_to_right);
-	int max_active_needle = max_active_needle_for_carriage_position(carriage_pos, left_to_right);
-
-	char min_needle_str[32], max_needle_str[32];
-	needle_pos_to_text(min_needle_str, min_active_needle);
-	needle_pos_to_text(max_needle_str, max_active_needle);
-	printf("Active needles: %s (%d) to %s (%d).\n", min_needle_str, min_active_needle, max_needle_str, max_active_needle);
+	{
+		struct needle_window_t window = get_needle_window_for_carriage_position(carriage_pos, left_to_right);
+		char min_needle_str[32], max_needle_str[32];
+		needle_pos_to_text(min_needle_str, window.min_needle);
+		needle_pos_to_text(max_needle_str, window.max_needle);
+		printf("Active needles: %s (%d) to %s (%d).\n", min_needle_str, window.min_needle, max_needle_str, window.max_needle);
+	}
 
 	printf("\n");
-	printf("For actuating single needle %s (%d), actuating windows follow:\n", carriage_pos_str, carriage_pos);
+	printf("For actuating single needle %s (%d), actuating windows are:\n", carriage_pos_str, carriage_pos);
 	printf("Left-to right:");
 	for (int i = 0; i < knitmachine_params.needle_count; i++) {
-		int min_active = min_active_needle_for_carriage_position(i, true);
-		int max_active = max_active_needle_for_carriage_position(i, true);
-		if ((carriage_pos >= min_active) && (carriage_pos <= max_active)) {
+		struct needle_window_t window = get_needle_window_for_carriage_position(i, true);
+		if ((carriage_pos >= window.min_needle) && (carriage_pos <= window.max_needle)) {
 			printf(" %3d", i);
 		}
 	}
 	printf("\n");
 	printf("Right-to-left:");
 	for (int i = 0; i < knitmachine_params.needle_count; i++) {
-		int min_active = min_active_needle_for_carriage_position(i, false);
-		int max_active = max_active_needle_for_carriage_position(i, false);
-		if ((carriage_pos >= min_active) && (carriage_pos <= max_active)) {
+		struct needle_window_t window = get_needle_window_for_carriage_position(i, false);
+		if ((carriage_pos >= window.min_needle) && (carriage_pos <= window.max_needle)) {
 			printf(" %3d", i);
 		}
 	}
