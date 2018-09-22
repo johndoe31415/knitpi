@@ -88,8 +88,8 @@ struct needle_window_t get_needle_window_for_carriage_position(int carriage_posi
 		result.min_needle = carriage_position - knitmachine_params.active_window_offset - knitmachine_params.active_window_size + 1;
 		result.max_needle = carriage_position - knitmachine_params.active_window_offset;
 	} else {
-		result.min_needle = carriage_position + knitmachine_params.active_window_offset + 1;
-		result.max_needle = carriage_position + knitmachine_params.active_window_offset + knitmachine_params.active_window_size;
+		result.min_needle = carriage_position + knitmachine_params.active_window_offset;
+		result.max_needle = carriage_position + knitmachine_params.active_window_offset + knitmachine_params.active_window_size - 1;
 	}
 	return result;
 }
