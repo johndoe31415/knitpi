@@ -24,55 +24,90 @@ import sys
 import json
 import time
 from knitui.ServerConnection import ServerConnection
-from FriendlyArgumentParser import FriendlyArgumentParser
+from MultiCommand import MultiCommand
 
-parser = FriendlyArgumentParser()
-parser.add_argument("--xoffset", metavar = "pixels", type = int, default = 0, help = "X offset in pixels. Defaults to %(default)s.")
-parser.add_argument("--yoffset", metavar = "pixels", type = int, default = 0, help = "X offset in pixels. Defaults to %(default)s.")
-parser.add_argument("-c", "--command", choices = [ "status", "cont-status", "getpattern", "setpattern", "clr", "center", "trim", "movelr", "moverl" ], default = "status", help = "Command to execute. Can be one of %(choices)s, defaults to %(default)s.")
-parser.add_argument("-f", "--file", metavar = "filename", default = "pattern.png", help = "For all operations that require an input/output file, this is the filename. Defaults to %(default)s.")
-parser.add_argument("socket", metavar = "file", type = str, help = "Socket to connect to.")
-args = parser.parse_args(sys.argv[1:])
+class Actions(object):
+	def __init__(self, cmdname, args):
+		self._args = args
+		self._conn = ServerConnection(self._args.socket)
+		handler = getattr(self, "_run_" + cmdname)
+		handler()
 
-conn = ServerConnection(args.socket)
-if args.command == "status":
-	status = conn.get_status(parse = True)
-	print(json.dumps(status, sort_keys = True, indent = 4))
-elif args.command == "cont-status":
-	while True:
-		status = conn.get_status(parse = True)
+	def _run_move(self):
+		status = self._conn.get_status(parse = True)
+		current = status["carriage_position"]
+		steps = self._args.pos - current
+		if steps > 0:
+			step = 1
+		else:
+			step = -1
+			steps = abs(steps)
+		for i in range(steps):
+			current += step
+			print(current)
+			result = self._conn.mock_command("setpos", current, parse = True)
+			time.sleep(0.01)
+
+	def _run_cstatus(self):
+		while True:
+			self._run_status()
+			time.sleep(1)
+
+	def _run_status(self):
+		status = self._conn.get_status(parse = True)
 		if status is not None:
 			print(json.dumps(status, sort_keys = True, indent = 4))
 		else:
-			print("Last error: %s" % (conn.last_error))
-		time.sleep(1)
-elif args.command == "getpattern":
-	data = conn.get_pattern(rawdata = True)
-	if data is not None:
-		print("Received %d bytes." % (len(data)))
-		with open(args.file, "wb") as f:
-			f.write(data)
-	else:
-		print("Error receving data.")
-elif args.command == "setpattern":
-	with open(args.file, "rb") as f:
-		data = f.read()
-	result = conn.set_pattern(xoffset = args.xoffset, yoffset = args.yoffset, merge = False, png_data = data)
-	print(result)
-elif args.command in [ "clr", "center", "trim" ]:
-	result = conn.edit_pattern(args.command, parse = True)
-	print(result)
-elif args.command in [ "movelr", "moverl" ]:
-	rng = range(50, 150 + 1)
-	if args.command == "moverl":
-		rng = reversed(rng)
-	for i in rng:
-		result = conn.mock_command("setpos", i, parse = True)
-		print(result)
-		time.sleep(0.01)
-else:
-	raise NotImplementedError(args.command)
+			print("Last error: %s" % (self._conn.last_error))
 
-if conn.last_error is not None:
-	print("Last error: %s" % (conn.last_error))
 
+	def _run_getpattern(self):
+		data = self._conn.get_pattern(rawdata = not self._args.pretty)
+		if data is not None:
+			print("Received %d bytes." % (len(data)))
+			with open(self._args.pngfile, "wb") as f:
+				f.write(data)
+		else:
+			print("Error receving data.")
+
+	def _run_setpattern(self):
+		with open(self._args.pngfile, "rb") as f:
+			data = f.read()
+		result = self._conn.set_pattern(xoffset = self._args.xoffset, yoffset = self._args.yoffset, merge = self._args.merge, png_data = data, parse = True)
+		print(json.dumps(result, sort_keys = True, indent = 4))
+
+mc = MultiCommand()
+default_socket = "../firmware/socket"
+
+def genparser(parser):
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+	parser.add_argument("pos", type = int, help = "Move the carriage position to the specified position.")
+mc.register("move", "Move the carriage to a position", genparser, action = Actions)
+
+def genparser(parser):
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+mc.register("status", "Get the status of the knit machine core", genparser, action = Actions)
+
+def genparser(parser):
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+mc.register("cstatus", "Get the status of the knit machine core continuously", genparser, action = Actions)
+
+def genparser(parser):
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+	parser.add_argument("-p", "--pretty", action = "store_true", help = "Get the pretty image for the pattern instead of the raw one")
+	parser.add_argument("pngfile", type = str, help = "PNG file to save pattern to.")
+mc.register("getpattern", "Get the current pattern and save as a PNG file", genparser, action = Actions)
+
+def genparser(parser):
+	parser.add_argument("-x", "--xoffset", metavar = "pos", type = int, default = 0, help = "X offset to place pattern at. Defaults to %(default)d.")
+	parser.add_argument("-y", "--yoffset", metavar = "pos", type = int, default = 0, help = "Y offset to place pattern at. Defaults to %(default)d.")
+	parser.add_argument("-m", "--merge", action = "store_true", help = "Merge given pattern file with currently set pattern instead of replacing it.")
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+	parser.add_argument("pngfile", type = str, help = "PNG file to load pattern from.")
+mc.register("setpattern", "Set the current pattern to the given PNG file", genparser, action = Actions)
+
+mc.run(sys.argv[1:])
+
+#elif args.command in [ "clr", "center", "trim" ]:
+#	result = conn.edit_pattern(args.command, parse = True)
+#	print(result)
