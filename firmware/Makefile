@@ -61,7 +61,8 @@ clean:
 	rm -f $(BINARIES)
 
 test: all
-	./knitserver $(TEST_FLAGS) -f -vvv socket >>knitdata.log
+	rm -f trace.json
+	./knitserver $(TEST_FLAGS) -f -vvv socket
 
 connect:
 	socat - unix-connect:socket

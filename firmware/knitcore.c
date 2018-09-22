@@ -69,13 +69,14 @@ void sled_update(struct server_state_t *server_state) {
 			struct json_dict_entry_t entries[] = {
 				JSON_DICTENTRY_STR("json_id", "windata"),
 				JSON_DICTENTRY_INT("row", server_state->pattern_row),
+				JSON_DICTENTRY_INT("pattern_xoffset", server_state->pattern_offset),
 				JSON_DICTENTRY_INT("carriage_position", server_state->carriage_position),
 				JSON_DICTENTRY_BOOL("left_to_right", direction_left_to_right),
 				JSON_DICTENTRY_INT("window_min", window.min_needle),
 				JSON_DICTENTRY_INT("window_max", window.max_needle),
 				{ 0 }
 			};
-			json_print_dict(stdout, entries);
+			json_trace(entries);
 		}
 
 		for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
@@ -102,7 +103,7 @@ void sled_update(struct server_state_t *server_state) {
 							JSON_DICTENTRY_INT("needle_id", needle_id),
 							{ 0 }
 						};
-						json_print_dict(stdout, entries);
+						json_trace(entries);
 					}
 					actuate_solenoids_for_needle(spi_data, server_state->belt_phase, needle_id);
 				}
@@ -112,11 +113,12 @@ void sled_update(struct server_state_t *server_state) {
 			/* Print output in JSON form */
 			struct json_dict_entry_t entries[] = {
 				JSON_DICTENTRY_STR("json_id", "spidata"),
+				JSON_DICTENTRY_INT("carriage_position", server_state->carriage_position),
 				JSON_DICTENTRY_INT("byte0", spi_data[0]),
 				JSON_DICTENTRY_INT("byte1", spi_data[1]),
 				{ 0 }
 			};
-			json_print_dict(stdout, entries);
+			json_trace(entries);
 		}
 	}
 	if (!pgm_opts->no_hardware) {

@@ -36,6 +36,7 @@
 #include "needles.h"
 #include "pattern.h"
 #include "png_writer.h"
+#include "tokenizer.h"
 
 struct test_mode_t {
 	const char *mode_name;
@@ -57,7 +58,8 @@ static int run_test_sled_actuate(int argc, char **argv);
 static int run_test_needle_name(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
-static int knit_needle_id = 100;
+static int knit_needle_first = 96;
+static int knit_needle_length = 16;
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -336,7 +338,7 @@ static void single_sled_actuation_callback(struct server_state_t *server_state, 
 
 	struct needle_window_t window = get_needle_window_for_carriage_position(position, left_to_right);
 	for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
-		if (needle_id == knit_needle_id) {
+		if ((needle_id >= knit_needle_first) && (needle_id <= knit_needle_first + knit_needle_length - 1)) {
 			actuate_solenoids_for_needle(spi_data, belt_phase, needle_id);
 		}
 	}
@@ -349,35 +351,75 @@ static void single_sled_actuation_callback(struct server_state_t *server_state, 
 
 static int run_test_sled_actuate(int argc, char **argv) {
 	printf("Testing sled positioning and actuation.\n");
-	all_peripherals_init();
-	sled_set_callback(NULL, single_sled_actuation_callback);
-	start_debouncer_thread(sled_input);
-	start_gpio_thread(debouncer_input, true);
-	spi_clear(SPI_74HC595, 2);
-	gpio_active(GPIO_74HC595_OE);
-
-	if (argc >= 4) {
-		int offset = atoi(argv[2]);
-		int size = atoi(argv[3]);
-		modify_knitmachine_params(offset, size);
-	}
-	if (argc >= 5) {
-		knit_needle_id = atoi(argv[4]);
+	if (!all_peripherals_init()) {
+		fprintf(stderr, "GPIO initialization failed.\n");
+	} else {
+		sled_set_callback(NULL, single_sled_actuation_callback);
+		start_debouncer_thread(sled_input);
+		start_gpio_thread(debouncer_input, true);
+		spi_clear(SPI_74HC595, 2);
+		gpio_active(GPIO_74HC595_OE);
 	}
 
-	const struct knitmachine_params_t *params = get_knitmachine_params();
-	fprintf(stderr, "Config: offset = %d, size = %d\n", params->active_window_offset, params->active_window_size);
-
+	char last_command[32];
+	last_command[0] = 0;
 	while (true) {
-		char name[32];
-		needle_pos_to_text(name, knit_needle_id);
-		printf("Knit needle ID: %s (%d)\n", name, knit_needle_id);
-		char buf[16];
-		if (!fgets(buf, sizeof(buf), stdin)) {
+		const struct knitmachine_params_t *params = get_knitmachine_params();
+		char first_name[32], last_name[32];
+		needle_pos_to_text(first_name, knit_needle_first);
+		needle_pos_to_text(last_name, knit_needle_first + knit_needle_length - 1);
+		printf("Kniting %d needles: From %s (%d) to %s (%d). Window offset %d, size %d.\n", knit_needle_length, first_name, knit_needle_first, last_name, knit_needle_first + knit_needle_length - 1, params->active_window_offset, params->active_window_size);
+
+		char command[32];
+		if (!fgets(command, sizeof(command), stdin)) {
 			perror("fgets");
 			break;
 		}
-		knit_needle_id++;
+		int length = trim_crlf(command);
+		if (length == 0) {
+			strcpy(command, last_command);
+		}
+
+		struct tokens_t* tokens = tok_create(command);
+		if (!tokens) {
+			exit(EXIT_FAILURE);
+		}
+
+		if (tokens->token_cnt >= 1) {
+			if (!strcmp(tokens->token[0].string, "+")) {
+				modify_knitmachine_params(params->active_window_offset, params->active_window_size + 1);
+			} else if (!strcmp(tokens->token[0].string, "-")) {
+				modify_knitmachine_params(params->active_window_offset, ((params->active_window_size - 1) >= 1) ? params->active_window_size - 1 : 1);
+			} else if (!strcmp(tokens->token[0].string, ">")) {
+				modify_knitmachine_params(params->active_window_offset + 1, params->active_window_size);
+			} else if (!strcmp(tokens->token[0].string, "<")) {
+				modify_knitmachine_params(params->active_window_offset - 1, params->active_window_size);
+			} else if ((!strcmp(tokens->token[0].string, "start")) && (tokens->token_cnt == 2)) {
+				knit_needle_first = atoi(tokens->token[1].string);
+			} else if (!strcmp(tokens->token[0].string, "start+")) {
+				knit_needle_first++;
+			} else if (!strcmp(tokens->token[0].string, "start-")) {
+				knit_needle_first--;
+			} else if ((!strcmp(tokens->token[0].string, "len")) && (tokens->token_cnt == 2)) {
+				knit_needle_length = atoi(tokens->token[1].string);
+				if (knit_needle_length < 1) {
+					knit_needle_length = 1;
+				}
+			} else if (!strcmp(tokens->token[0].string, "?")) {
+				fprintf(stderr, "Allowed commands:\n");
+				fprintf(stderr, "  +           Increase machine window size\n");
+				fprintf(stderr, "  -           Decrease machine window size\n");
+				fprintf(stderr, "  >           Increase machine window offset\n");
+				fprintf(stderr, "  <           Decrease machine window offset\n");
+				fprintf(stderr, "  start [n]   Set starting needle\n");
+				fprintf(stderr, "  len [n]     Set number of needles to knit\n");
+				fprintf(stderr, "  start+      Increase starting needle\n");
+				fprintf(stderr, "  start-      Decrease starting needle\n");
+			}
+			strcpy(last_command, command);
+		}
+
+		tok_free(tokens);
 	}
 	return 0;
 }

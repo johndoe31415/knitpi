@@ -72,3 +72,14 @@ void __attribute__ ((format (printf, 3, 4))) json_respond_simple(FILE *f, const 
 	};
 	json_print_dict(f, json_dict);
 }
+
+void json_trace(const struct json_dict_entry_t *entries) {
+	static FILE *tracefile;
+	if (!tracefile) {
+		tracefile = fopen("trace.json", "a");
+	}
+	if (tracefile) {
+		json_print_dict(tracefile, entries);
+		fflush(tracefile);
+	}
+}

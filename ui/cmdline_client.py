@@ -37,7 +37,10 @@ class Actions(object):
 		status = self._conn.get_status(parse = True)
 		current = status["carriage_position"]
 		steps = self._args.pos - current
-		if steps > 0:
+		if steps == 0:
+			step = 0
+			steps = 1
+		elif steps > 0:
 			step = 1
 		else:
 			step = -1

@@ -1,0 +1,86 @@
+#!/usr/bin/python3
+#	knitpi - Raspberry Pi interface for Brother KH-930 knitting machine
+#	Copyright (C) 2018-2018 Johannes Bauer
+#
+#	This file is part of knitpi.
+#
+#	knitpi is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	knitpi is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with knitpi; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+
+import sys
+import json
+import cairo
+import tempfile
+import subprocess
+from AdvancedColorPalette import AdvancedColorPalette
+
+infile = sys.argv[1]
+pattern_file = sys.argv[2]
+outfile = sys.argv[3]
+palette = AdvancedColorPalette.load_from_json("palettes.json", "flatui")
+
+surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 200, 16)
+ctx = cairo.Context(surface)
+
+color_names = [ "turquoise", "emerland", "peter-river", "amethyst", "wet-asphalt", "sun-flower", "carrot", "alizarin", "green-sea", "nephritis", "belize-hole", "wisteria", "midnight-blue", "orange", "pumpkin", "pomegranate" ]
+
+with open(infile) as f:
+	for line in f:
+		try:
+			data = json.loads(line)
+			if data.get("json_id") == "spidata":
+				solenoids = [ data["byte0"], data["byte1"] ]
+				for solenoid_id in range(16):
+					byteno = solenoid_id // 8
+					bitno = solenoid_id % 8
+					color = color_names[solenoid_id]
+					if ((solenoids[byteno] >> bitno) & 1) == 1:
+						xpos = data["carriage_position"]
+						ypos = solenoid_id
+						(r, g, b) = palette[color]
+						ctx.set_source_rgb(r / 255, g / 255, b / 255)
+						ctx.rectangle(xpos, ypos, 1, 1)
+						ctx.fill()
+		except json.decoder.JSONDecodeError:
+			pass
+
+with tempfile.NamedTemporaryFile(suffix = ".png") as raw_img, tempfile.NamedTemporaryFile(suffix = ".png") as conv_img:
+	# First write the solenoids
+	surface.write_to_png(raw_img.name)
+	cmd = [ "convert" ]
+	cmd += [ "-scale", "800x" ]
+	cmd += [ "-background", "transparent" ]
+	cmd += [ "-gravity", "south" ]
+	cmd += [ "-extent", "800x80" ]
+	cmd += [ raw_img.name, conv_img.name ]
+	print(" ".join(cmd))
+	subprocess.check_call(cmd)
+
+	cmd = [ "convert" ]
+	cmd += [ "-gravity", "center", "-extent", "200x" ]
+	cmd += [ "-scale", "800x" ]
+	cmd += [ "-transparent", "white" ]
+	cmd += [ "-negate" ]
+	cmd += [ pattern_file, raw_img.name ]
+	print(" ".join(cmd))
+	subprocess.check_call(cmd)
+
+	cmd = [ "convert" ]
+	cmd += [ "-gravity", "north" ]
+	cmd += [ "-geometry", "800x80" ]
+	cmd += [ "-composite", conv_img.name, raw_img.name, outfile ]
+	print(" ".join(cmd))
+	subprocess.check_call(cmd)

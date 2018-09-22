@@ -29,7 +29,7 @@ static struct knitmachine_params_t knitmachine_params = {
 	.belt_phase_offset = 8,
 	.needle_count = 200,
 	.active_window_offset = 16,
-	.active_window_size = 12,
+	.active_window_size = 16,
 };
 
 const struct knitmachine_params_t *get_knitmachine_params(void) {
