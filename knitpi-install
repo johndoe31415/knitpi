@@ -113,6 +113,7 @@ with open("/etc/systemd/system/knitpi-core.service", "w") as f:
 	print("Type=simple", file = f)
 	print("ExecStart=%s/firmware/knitserver -v -f %s/socket" % (config["gitdir"], config["homedir"]), file = f)
 	print("User=%s" % (config["username"]), file = f)
+	print("Nice=-15", file = f)
 	print(file = f)
 	print("[Install]", file = f)
 	print("WantedBy=multi-user.target", file = f)
