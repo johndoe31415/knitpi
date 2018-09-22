@@ -57,7 +57,7 @@ static int run_test_sled_actuate(int argc, char **argv);
 static int run_test_needle_name(int argc, char **argv);
 
 static struct timespec last_gpio_event[GPIO_COUNT];
-static int knit_needle_id = 104;
+static int knit_needle_id = 100;
 
 static struct test_mode_t test_modes[] = {
 	{
@@ -336,13 +336,13 @@ static void single_sled_actuation_callback(struct server_state_t *server_state, 
 
 	struct needle_window_t window = get_needle_window_for_carriage_position(position, left_to_right);
 	for (int needle_id = window.min_needle; needle_id <= window.max_needle; needle_id++) {
-		if (needle_id == 100) {
+		if (needle_id == knit_needle_id) {
 			actuate_solenoids_for_needle(spi_data, belt_phase, needle_id);
 		}
 	}
 
 	if (spi_data[0] || spi_data[1]) {
-		fprintf(stderr, "KNIT %02x %02x at sled pos %d\n", spi_data[0], spi_data[1], position);
+		fprintf(stderr, "SPI %02x %02x at carriage position %d\n", spi_data[0], spi_data[1], position);
 	}
 	spi_send(SPI_74HC595, spi_data, sizeof(spi_data));
 }
@@ -355,6 +355,19 @@ static int run_test_sled_actuate(int argc, char **argv) {
 	start_gpio_thread(debouncer_input, true);
 	spi_clear(SPI_74HC595, 2);
 	gpio_active(GPIO_74HC595_OE);
+
+	if (argc >= 4) {
+		int offset = atoi(argv[2]);
+		int size = atoi(argv[3]);
+		modify_knitmachine_params(offset, size);
+	}
+	if (argc >= 5) {
+		knit_needle_id = atoi(argv[4]);
+	}
+
+	const struct knitmachine_params_t *params = get_knitmachine_params();
+	fprintf(stderr, "Config: offset = %d, size = %d\n", params->active_window_offset, params->active_window_size);
+
 	while (true) {
 		char name[32];
 		needle_pos_to_text(name, knit_needle_id);

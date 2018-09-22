@@ -24,13 +24,22 @@
 #include <stdio.h>
 #include "needles.h"
 
-static const struct knitmachine_params_t knitmachine_params = {
+static struct knitmachine_params_t knitmachine_params = {
 	.solenoid_count = 16,
 	.belt_phase_offset = 8,
 	.needle_count = 200,
-	.active_window_offset = 12,
+	.active_window_offset = 16,
 	.active_window_size = 12,
 };
+
+const struct knitmachine_params_t *get_knitmachine_params(void) {
+	return &knitmachine_params;
+}
+
+void modify_knitmachine_params(int new_window_offset, int new_window_size) {
+	knitmachine_params.active_window_offset = new_window_offset;
+	knitmachine_params.active_window_size = new_window_size;
+}
 
 void needle_pos_to_text(char text[static 32], unsigned int needle_pos) {
 	if (needle_pos < 100) {

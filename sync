@@ -2,5 +2,14 @@
 #
 #
 
+HOSTNAME="knitpi.wlan.net"
 make -C firmware clean
-rsync -a --delete -r ../knitpi knitpi.wlan.net:
+if [ "$1" == "all" ]; then
+	rsync -a --delete --exclude '*.o' ../knitpi "${HOSTNAME}:"
+else
+	rsync -a --exclude '*.o' firmware "knitpi@$HOSTNAME":knitpi/
+
+	ssh "knitpi@$HOSTNAME" 'cd ~/knitpi/firmware; make'
+	ssh "root@${HOSTNAME}" 'systemctl restart knitpi-core'
+	curl -v -F 'set_pattern=1' -F 'xoffset=0' -F 'yoffset=0' -F 'pattern=@pattern/test4.png'  http://${HOSTNAME}/rest/pattern
+fi
