@@ -57,6 +57,10 @@ class Controller(object):
 			template_args["temperature_exception"] = str(e)
 		template_args["temperature"] = temp
 
+		template_args["hwinfo"] = None
+		server_connection = ServerConnection(self._config["server_socket"])
+		template_args["hwinfo"] = server_connection.get_hwinfo(parse = True)
+
 	def serve_page(self, request, template_name, args = None):
 		if args is None:
 			args = { }
@@ -84,6 +88,7 @@ class Controller(object):
 			return flask.Response("No pattern loaded.\n", status = 404, mimetype = "text/plain")
 
 	def _msg(self, request, msgtype, msg):
+		# TODO: Implement me!
 		print(msgtype, msg)
 
 	def rest_pattern_post(self, request):
@@ -124,6 +129,10 @@ class Controller(object):
 		result = action(server_connection)
 		self._isleep_interrupt()
 		return result
+
+	def rest_hwinfo(self, request):
+		server_connection = ServerConnection(self._config["server_socket"])
+		return flask.Response(server_connection.get_hwinfo(), status = 200, mimetype = "application/json")
 
 	def rest_setrow(self, request, rowid):
 		return self._single_server_action(lambda server_connection: server_connection.set_row(rowid))

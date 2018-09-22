@@ -20,6 +20,15 @@
 					<td><span title="${temperature_exception}">${temperature}</span></td>
 				%endif
 			</tr>
+			<tr>
+				<td>Hardware:</td>
+				%if hwinfo is None:
+				<td>Not available</td>
+				%else:
+				<td>${hwinfo["needle_count"]} needles, belt offset ${hwinfo["belt_phase_offset"]}<br />
+					Actuation window size ${hwinfo["active_window_size"]} with offset ${hwinfo["active_window_offset"]}</td>
+				%endif
+			</tr>
 		</tbody>
 	</table>
 </div>

@@ -63,6 +63,12 @@ class Actions(object):
 		else:
 			print("Last error: %s" % (self._conn.last_error))
 
+	def _run_hwinfo(self):
+		hwinfo = self._conn.get_hwinfo(parse = True)
+		if hwinfo is not None:
+			print(json.dumps(hwinfo, sort_keys = True, indent = 4))
+		else:
+			print("Last error: %s" % (self._conn.last_error))
 
 	def _run_getpattern(self):
 		data = self._conn.get_pattern(rawdata = not self._args.pretty)
@@ -90,6 +96,10 @@ mc.register("move", "Move the carriage to a position", genparser, action = Actio
 def genparser(parser):
 	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
 mc.register("status", "Get the status of the knit machine core", genparser, action = Actions)
+
+def genparser(parser):
+	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
+mc.register("hwinfo", "Get information aber the hardware", genparser, action = Actions)
 
 def genparser(parser):
 	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")

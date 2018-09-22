@@ -48,6 +48,7 @@
 #include "png_reader.h"
 #include "png_writer.h"
 #include "isleep.h"
+#include "needles.h"
 
 #define MAX_CMD_ARG_COUNT		8
 
@@ -109,6 +110,7 @@ static bool argument_parse_bool(union token_t *token) {
 
 static enum execution_state_t handler_status(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_statuswait(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
+static enum execution_state_t handler_hwinfo(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_setpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_getpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
 static enum execution_state_t handler_editpattern(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf);
@@ -132,6 +134,10 @@ static struct command_t known_commands[] = {
 		.arguments = {
 			{ .name = "timeout_millisecs/int", .parser = argument_parse_int },
 		},
+	},
+	{
+		.cmdname = "hwinfo",
+		.handler = handler_hwinfo,
 	},
 	{
 		.cmdname = "setpattern",
@@ -254,6 +260,21 @@ static enum execution_state_t handler_statuswait(struct client_thread_data_t *wo
 		isleep(&worker->server_state->event_notification, tokens->token[1].integer);
 	}
 	return handler_status(worker, tokens, membuf);
+}
+
+static enum execution_state_t handler_hwinfo(struct client_thread_data_t *worker, struct tokens_t* tokens, struct membuf_t *membuf) {
+	const struct knitmachine_params_t *params = get_knitmachine_params();
+	struct json_dict_entry_t json_dict[] = {
+		JSON_DICTENTRY_STR("msg_type", "hwinfo"),
+		JSON_DICTENTRY_INT("solenoid_count", params->solenoid_count),
+		JSON_DICTENTRY_INT("belt_phase_offset", params->belt_phase_offset),
+		JSON_DICTENTRY_INT("needle_count", params->needle_count),
+		JSON_DICTENTRY_INT("active_window_offset", params->active_window_offset),
+		JSON_DICTENTRY_INT("active_window_size", params->active_window_size),
+		{ 0 },
+	};
+	json_print_dict(worker->f, json_dict);
+	return SUCCESS;
 }
 
 static void center_pattern(struct client_thread_data_t *worker) {

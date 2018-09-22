@@ -93,6 +93,9 @@ class ServerConnection(object):
 		else:
 			return self._execute("statuswait %d" % (wait_milliseconds), parse = parse)
 
+	def get_hwinfo(self, parse = False):
+		return self._execute("hwinfo", parse = parse)
+
 	def get_pattern(self, rawdata = False):
 		assert(isinstance(rawdata, bool))
 		try:

@@ -50,6 +50,10 @@ def index():
 def show_page(name):
 	return ctrlr.serve_page(flask.request, name)
 
+@app.route("/rest/hwinfo", methods = [ "GET" ])
+def rest_hwinfo_get():
+	return ctrlr.rest_hwinfo(flask.request)
+
 @app.route("/rest/pattern", methods = [ "GET" ])
 def rest_pattern_get():
 	return ctrlr.rest_pattern_get(flask.request)
