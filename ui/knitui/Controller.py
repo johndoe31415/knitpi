@@ -63,7 +63,9 @@ class Controller(object):
 
 	def serve_page(self, request, template_name, args = None):
 		if args is None:
-			args = { }
+			args = {
+				"debugging":		self._config.get("debugging", False),
+			}
 		try:
 			template = self._template_lookup.get_template(template_name + ".html")
 		except mako.exceptions.TopLevelLookupException:

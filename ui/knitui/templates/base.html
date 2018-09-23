@@ -25,8 +25,10 @@
 						<li class="pure-menu-item"><a href="/" class="pure-menu-link">Status</a></li>
 						<li class="pure-menu-item"><a href="/page/pattern" class="pure-menu-link">Pattern</a></li>
 						<li class="pure-menu-item"><a href="/page/settings" class="pure-menu-link">Settings</a></li>
-						<li class="pure-menu-item"><a href="/page/debug" class="pure-menu-link">Debug</a></li>
 						<li class="pure-menu-item"><a href="/page/system" class="pure-menu-link">System</a></li>
+						%if debugging:
+						<li class="pure-menu-item"><a href="/page/debug" class="pure-menu-link">Debug</a></li>
+						%endif
 
 						<!--
 						<li class="pure-menu-item menu-item-divided pure-menu-selected">

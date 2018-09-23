@@ -1,4 +1,5 @@
 {
 	"server_socket":		"/home/knitpi/socket",
-	"template_lookup_dir": 	"/home/knitpi/knitpi/ui/knitui/templates"
+	"template_lookup_dir": 	"/home/knitpi/knitpi/ui/knitui/templates",
+	"debugging":			false
 }
