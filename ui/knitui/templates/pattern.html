@@ -14,24 +14,25 @@
 		<div class="pure-control-group">
 			<label for="pattern">Input file:</label>
 			<div class="upload-btn-wrapper">
-				<button class="pure-button pure-button-secondary">Choose pattern</button>
-				<input type="file" name="pattern" accept="image/png" />
+				<button class="pure-button pure-button-secondary">Choose file</button>
+				<input type="file" name="pattern" accept="image/png" onchange="file_selected()" />
+				<span id="file-chosen" style="display: none; color: #27ae60; font-size: 2em; vertical-align: center;">✓</span>
 			</div>
 		</div>
 
 		<div class="pure-control-group">
 			<label for="xoffset">X offset:</label>
-	        <input type="text" id="xoffset" name="xoffset" value="0">
+	        <input type="text" id="xoffset" name="xoffset" value="0" size="3">
 		</div>
 
 		<div class="pure-control-group">
 			<label for="yoffset">Y offset:</label>
-	        <input type="text" id="yoffset" name="yoffset" value="0">
+	        <input type="text" id="yoffset" name="yoffset" value="0" size="3">
 		</div>
 
 		<div class="pure-control-group">
-			<input type="submit" class="pure-button" name="set_pattern" value="Set pattern">
-			<input type="submit" class="pure-button" name="merge_pattern" value="Merge pattern">
+			<input type="submit" class="pure-button only-when-have-file" name="set_pattern" value="Set pattern" disabled="true">
+			<input type="submit" class="pure-button only-when-have-file" name="merge_pattern" value="Merge pattern" disabled="true">
 		</div>
 	</fieldset>
 </form>
@@ -54,5 +55,10 @@ const pattern = document.getElementById("pattern");
 function pattern_available(availibility) {
 	document.querySelectorAll(availibility ? ".show_without_pattern" : ".show_with_pattern").forEach(function(element) { element.style.display = "none"; });
 	document.querySelectorAll(availibility ? ".show_with_pattern" : ".show_without_pattern").forEach(function(element) { element.style.display = ""; });
+}
+
+function file_selected() {
+	document.getElementById("file-chosen").style.display = "";
+	document.querySelectorAll(".only-when-have-file").forEach(function(element) { element.disabled = false; });
 }
 </script>
