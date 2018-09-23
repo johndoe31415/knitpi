@@ -36,8 +36,8 @@ Inputs/outputs are described from the knitting machine side:
 ## Operation of the Knitting Machine
 It's actually very simple: Say you always actuate one solenoid without looking
 at any rotary encoder inputs, then every 16th needle will be set. Depending on
-the belt phase, this means that all needles (16 * i + 0) or all needles (16 * i
-+ 8) will be set.
+the belt phase, this means that all needles (16 * i + 0) or all needles (16 * i + 8) 
+will be set.
 
 Now when you try to get the correct one, you will have to time the actuation
 according to the carriage position which you determined from the rotary
