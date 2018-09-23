@@ -93,6 +93,9 @@ int main(int argc, char **argv) {
 	int carriage_pos = atoi(argv[1]);
 	bool left_to_right = atoi(argv[2]);
 
+	const struct knitmachine_params_t *params = get_knitmachine_params();
+	printf("Hardware configuration: offset %d, window length %d\n", params->active_window_offset, params->active_window_size);
+
 	char carriage_pos_str[32];
 	needle_pos_to_text(carriage_pos_str, carriage_pos);
 	printf("Carriage position: %s (%d), movement %s\n", carriage_pos_str, carriage_pos, left_to_right ? "->" : "<-");

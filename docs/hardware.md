@@ -39,61 +39,72 @@ at any rotary encoder inputs, then every 16th needle will be set. Depending on
 the belt phase, this means that all needles (16 * i + 0) or all needles (16 * i
 + 8) will be set.
 
-Solenoids will have to be actuated *after* the carriage moves over them and the
-solenoids need to remain engaged for a while. I found 12 out of 16 results in
-reliable operation.
+Now when you try to get the correct one, you will have to time the actuation
+according to the carriage position which you determined from the rotary
+encoders. Important here is that the solenoids have to be actuated *after* the
+carriage moves over them and that the solenoids need to remain engaged for a
+while. I.e., there is a "window" of needles which are active that I call the
+"actuation window". Therefore, there are two parameters that have to be tuned:
+The offset of the window to the carriage position and the window size. I've
+experimented with this a bit and am currently using a setup of offset 11 and
+window size 16 (the maximum) which seems to produce reliable results. With a
+window size of 16, any offset less than 6 and any offset more than 16 resulted
+in unreliable operation -- therefore I opted for the average value of the two
+(11).
 
-The following diagram shows what you would need to do when you only wanted to
-engage needle "yellow 16". The blue numbers give a zero-based continuous
-offset, i.e., yellow 16 is #84.
-
-First, determine the correct solenoid: The corresponding solenoid for needle #84
-is Solenoid 5 (84 mod 16 = 5) if the belt phase is 0. Otherwise, when the belt
-phase is 1, Solenoid 13 is correct ((84 + 8) mod 16 = 13).
-
-Secondly, determine the window in which solenoid 5 or 13 has to be engaged.
-Note, as shown in the diagram, that the engagement needs to happen *after* the
-rotary encoder indicates that the needle has passed. I.e., when moving from
-left to right, the solenoid has to be actuated starting from needle #96 (yellow
-4) up until needle #107 (green 8). Moving in the opposite direction, i.e., from
-right to left, the solenoid has to be turned on starting from needle #71
-(yellow 29) up until needle #60 (yellow 40).
-
-Moving from left to right, the windows for each needle therefore are:
-
-```
-window_lo = needle_pos + 12
-window_hi = needle_pos + 23
-```
-
-Moving from right to left, they are:
-
-```
-window_lo = needle_pos - 24
-window_hi = needle_pos - 13
-```
-
-However, in normal operation we have the opposite situation: We want to figure
-out for a given carriage position which the minimal and maximal needle is that
-we need to actuate (if they are set). This is also pretty easy. Moving from
-left to right:
-
-```
-min_needle_pos = carriage_pos - 23
-max_needle_pos = carriage_pos - 12
-```
-
-And from right to left:
-
-```
-min_needle_pos = carriage_pos - 24
-max_needle_pos = carriage_pos - 13
-```
+The following diagram shows what needles are in the actuation window when the
+carriage position is hovering over "green 65". It depens on the movement
+direction: If the carriage is moving from left-to-right, then the needles
+"green 39" to "green 54" are active in this case. Moving right-to-left, needles
+"green 76" to "green 91" are the "hot" ones.
 
 ![Needle actuation diagram](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/needle_actuation.svg?sanitize=true)
 
-TODO: double check if this is accurate. Seems to have a off-by-one?
+Once you know what needles are in the actuation window, you need to determine
+for each of these needles (16 in my case) if you want them set or not. For
+those that you want set, you need to engage the solenoids.  So for example,
+let's say we're moving left-to-right and we want to set only three needles:
+"green 40", "green 50" and "green 60".
 
+At position "green 64" with left-to-right movement, the actuation window goes
+from "green 39" to "green 54". Therefore, we only have two needles to consider:
+"green 40" and "green 50" -- "green 60" is not in the window and can be
+ignored.
+
+We therefore have to engage two solenoids. Let's say the belt phase is 0. Then
+determining the correct ones is easy:
+
+```
+belt phase 0:
+green 40 = 139 -> 139 % 16 = 11
+green 50 = 149 -> 149 % 16 = 5
+```
+
+Therefore, engage solenoids 5 and 11 at this carriage position to get the
+desired result. When the belt phase is 1, it's only slightly more complicated:
+
+```
+belt phase 1:
+green 40 = 139 -> (139 + 8) % 16 = 3
+green 50 = 149 -> (149 + 8) % 16 = 13
+```
+
+For belt phase 1, we therefore need solenoids 3 and 13 to engage.
+
+It may be a bit complicated, but the following image shows all solenoids and at
+which time they need to be active to get a specific pattern:
+
+![Movement left-to-right](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/move_left_to_right.png)
+
+Every needle is 4x4 pixels wide. You see on the topmost row (in black) the
+pattern that you want to knit. Then, below, there are 16 rows (each also 4
+pixels in height) which indicate all 16 solenoids. They're colored in whenever
+they need to be engaged.
+
+Consequently, when moving right-to-left for the exact same pattern, here's the
+timings that they need to be engaged at:
+
+![Movement right-to-left](https://raw.githubusercontent.com/johndoe31415/knitpi/master/docs/move_right_to_left.png)
 
 In summary, the operation works as follows:
 
@@ -102,11 +113,12 @@ In summary, the operation works as follows:
     while over hall sensor.
   * Record carriage position by interpreting the relative rotary encoder inputs
     V1/V2.
-  * Depending on the determined carriage position, determine the "active"
-    needle window (min_needle_pos to max_needle_pos).
-  * Determine which of the needles in this window need to be set (depending on
-    the pattern).
-  * Determine the corresponding solenoids (mind the belt phase) and actuate them.
+  * Depending on the determined carriage position, determine the "hot" needle
+    window.
+  * Determine which of the needles in this "hot" actuation window need to be
+    set (depending on the pattern).
+  * Determine the corresponding solenoids (considering the belt phase) and
+    actuate them.
 
 
 ## Hall sensor signal conditioning
