@@ -117,7 +117,12 @@ function wsevent_onmessage(event) {
 				pattern_finished_sound.play();
 			} else if ((row_sound != null) && (last_status != null) && (last_status["carriage_position_valid"]) && (last_status["pattern_row"] != msg["pattern_row"])) {
 				/* Row advanced */
-				row_sound.play();
+				if ((msg["pattern_row"] == 0) && (msg["repeat_mode"] == "repeat")) {
+					/* In repeat mode, advanced to row 0 again */
+					pattern_finished_sound.play();
+				} else {
+					row_sound.play();
+				}
 			}
 			carriage_position_arrow.style.display = "";
 			set_one_class_of(carriage_pos_button, "btype-checkmark", [ "btype-checkmark", "btype-warning" ]);

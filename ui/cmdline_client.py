@@ -33,10 +33,10 @@ class Actions(object):
 		handler = getattr(self, "_run_" + cmdname)
 		handler()
 
-	def _run_move(self):
+	def _move_to(self, target):
 		status = self._conn.get_status(parse = True)
 		current = status["carriage_position"]
-		steps = self._args.pos - current
+		steps = target - current
 		if steps == 0:
 			step = 0
 			steps = 1
@@ -50,6 +50,11 @@ class Actions(object):
 			print(current)
 			result = self._conn.mock_command("setpos", current, parse = True)
 			time.sleep(0.01)
+
+
+	def _run_move(self):
+		for pos in self._args.pos:
+			self._move_to(pos)
 
 	def _run_cstatus(self):
 		while True:
@@ -90,7 +95,7 @@ default_socket = "../firmware/socket"
 
 def genparser(parser):
 	parser.add_argument("-s", "--socket", metavar = "filename", default = default_socket, help = "Specifies the UNIX socket that the knitcore is found at, defaults to %(default)s.")
-	parser.add_argument("pos", type = int, help = "Move the carriage position to the specified position.")
+	parser.add_argument("pos", type = int, nargs = "+", help = "Move the carriage position to the specified position(s).")
 mc.register("move", "Move the carriage to a position", genparser, action = Actions)
 
 def genparser(parser):
